@@ -38,4 +38,4 @@ MediSync/
 ├── controllers/ # Business logic
 └── README.md
 
-## Project Structure
+
