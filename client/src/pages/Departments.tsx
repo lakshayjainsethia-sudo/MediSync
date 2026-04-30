@@ -41,11 +41,11 @@ export default function Departments() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 p-6">
+    <div className="min-h-screen bg-slate-50 p-6">
       <div className="max-w-7xl mx-auto">
         <div className="mb-6">
-          <h1 className="text-3xl font-bold text-gray-900">Departments</h1>
-          <p className="text-gray-600 mt-1">Browse our medical departments</p>
+          <h1 className="text-3xl font-bold text-slate-900">Departments</h1>
+          <p className="text-slate-600 mt-1">Browse our medical departments</p>
         </div>
 
         {/* Search */}
@@ -84,16 +84,16 @@ export default function Departments() {
                       </div>
                     </div>
                     <div className="ml-4 flex-1">
-                      <h3 className="text-lg font-semibold text-gray-900 mb-1">
+                      <h3 className="text-lg font-semibold text-slate-900 mb-1">
                         {department.name}
                       </h3>
                       {department.description && (
-                        <p className="text-sm text-gray-600">{department.description}</p>
+                        <p className="text-sm text-slate-600">{department.description}</p>
                       )}
                     </div>
                   </div>
                   {department.head && (
-                    <div className="flex items-center text-sm text-gray-600">
+                    <div className="flex items-center text-sm text-slate-600">
                       <Users className="h-4 w-4 mr-2" />
                       <span>
                         Head: {typeof department.head === 'object' ? department.head.name : 'N/A'}

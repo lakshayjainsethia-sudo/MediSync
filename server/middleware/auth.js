@@ -2,7 +2,7 @@ const jwt = require('jsonwebtoken');
 const User = require('../models/User');
 
 // Protect routes - user must be authenticated
-exports.protect = async (req, res, next) => {
+const protect = async (req, res, next) => {
   try {
     let token;
     
@@ -24,6 +24,21 @@ exports.protect = async (req, res, next) => {
       if (!req.user) {
         return res.status(401).json({ message: 'User not found' });
       }
+
+      // Normalize role string to lowercase to avoid strict equals bypassing
+      if (req.user.role) {
+         req.user.role = req.user.role.toLowerCase();
+      }
+
+      // STRICT OVERHAUL: Enforce isApproved logic for staff roles
+      const staffRoles = ['doctor', 'nurse', 'pharmacist', 'receptionist'];
+      if (staffRoles.includes(req.user.role) && req.user.isApproved === false) {
+        return res.status(403).json({ 
+          message: 'Your account is pending Admin approval. Please contact an administrator.',
+          isPendingApproval: true 
+        });
+      }
+
       next();
     } catch (err) {
       return res.status(401).json({ message: 'Not authorized, token failed' });
@@ -34,7 +49,7 @@ exports.protect = async (req, res, next) => {
 };
 
 // Grant access to specific roles
-exports.authorize = (...roles) => {
+const authorize = (...roles) => {
   return (req, res, next) => {
     if (!req.user) {
       return res.status(401).json({ message: 'Not authenticated' });
@@ -48,10 +63,12 @@ exports.authorize = (...roles) => {
   };
 };
 
+// ... existing logic below until export ...
+
 // Generate token
 const generateToken = (id) => {
   return jwt.sign({ id }, process.env.JWT_SECRET, {
-    expiresIn: '30m'
+    expiresIn: '15m'
   });
 };
 
@@ -81,6 +98,18 @@ const sendTokenResponse = (user, statusCode, res) => {
   user.refreshToken = refreshToken;
   user.save({ validateBeforeSave: false });
 
+  // Define robust dynamic context to drive frontend visibility
+  const getPermissions = (role) => {
+    switch(role) {
+      case 'admin': return ['all'];
+      case 'doctor': return ['read:patients', 'write:medical-records', 'read:appointments', 'write:appointments', 'read:billing'];
+      case 'receptionist': return ['read:patients', 'read:appointments', 'write:appointments', 'read:billing', 'write:billing'];
+      case 'pharmacist': return ['read:patients', 'read:appointments', 'read:inventory', 'write:inventory', 'read:billing', 'write:billing'];
+      case 'patient': return ['read:own_records', 'read:own_appointments', 'write:own_appointments', 'read:own_billing'];
+      default: return [];
+    }
+  };
+
   res
     .status(statusCode)
     .cookie(process.env.COOKIE_NAME || 'token', token, options)
@@ -94,9 +123,10 @@ const sendTokenResponse = (user, statusCode, res) => {
         role: user.role,
         isApproved: user.isApproved,
         specialization: user.specialization,
-        phone: user.phone
+        phone: user.phone,
+        permissions: getPermissions(user.role)
       }
     });
 };
 
-exports.sendTokenResponse = sendTokenResponse;
+module.exports = { protect, authorize, sendTokenResponse };

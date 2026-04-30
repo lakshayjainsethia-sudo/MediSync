@@ -28,16 +28,16 @@ const userSchema = new mongoose.Schema({
   },
   role: {
     type: String,
-    enum: ['patient', 'doctor', 'admin', 'nurse', 'pharmacist', 'receptionist'],
-    default: 'patient'
+    enum: ['Patient', 'Doctor', 'Admin', 'Pharmacist', 'Receptionist'],
+    default: 'Patient'
   },
   specialization: {
     type: String,
     trim: true
   },
   department: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'Department'
+    type: String,
+    trim: true
   },
   licenseNumber: String,
   experience: Number,
@@ -47,21 +47,17 @@ const userSchema = new mongoose.Schema({
     type: Number,
     default: 0
   },
-  availability: {
-    days: [{
+  availabilitySlots: [{
+    day: {
       type: String,
       enum: ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday']
-    }],
+    },
     startTime: String,
     endTime: String
-  },
+  }],
   phone: {
     type: String,
     maxlength: [20, 'Phone number cannot be longer than 20 characters']
-  },
-  specialization: {
-    type: String,
-    trim: true
   },
   profileImage: {
     type: String,

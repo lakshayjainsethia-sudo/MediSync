@@ -49,11 +49,11 @@ export default function Doctors() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 p-6">
+    <div className="min-h-screen bg-slate-50 p-6">
       <div className="max-w-7xl mx-auto">
         <div className="mb-6">
-          <h1 className="text-3xl font-bold text-gray-900">Our Doctors</h1>
-          <p className="text-gray-600 mt-1">Find and book appointments with our expert doctors</p>
+          <h1 className="text-3xl font-bold text-slate-900">Our Doctors</h1>
+          <p className="text-slate-600 mt-1">Find and book appointments with our expert doctors</p>
         </div>
 
         {/* Search and Filter */}
@@ -99,7 +99,7 @@ export default function Doctors() {
                     <div className="mx-auto h-20 w-20 bg-primary-600 rounded-full flex items-center justify-center text-white text-2xl font-bold mb-3">
                       {doctor.name.charAt(0).toUpperCase()}
                     </div>
-                    <h3 className="text-xl font-semibold text-gray-900 mb-1">
+                    <h3 className="text-xl font-semibold text-slate-900 mb-1">
                       Dr. {doctor.name}
                     </h3>
                     {doctor.specialization && (
@@ -108,14 +108,14 @@ export default function Doctors() {
                       </p>
                     )}
                     {doctor.experience && (
-                      <p className="text-sm text-gray-600">
+                      <p className="text-sm text-slate-600">
                         {doctor.experience} years of experience
                       </p>
                     )}
                   </div>
 
                   {doctor.bio && (
-                    <p className="text-sm text-gray-600 mb-4 line-clamp-2">
+                    <p className="text-sm text-slate-600 mb-4 line-clamp-2">
                       {doctor.bio}
                     </p>
                   )}
@@ -123,12 +123,12 @@ export default function Doctors() {
                   <div className="space-y-2 mb-4">
                     {doctor.consultationFee && (
                       <div className="flex items-center justify-between text-sm">
-                        <span className="text-gray-600">Consultation Fee:</span>
-                        <span className="font-semibold text-gray-900">${doctor.consultationFee}</span>
+                        <span className="text-slate-600">Consultation Fee:</span>
+                        <span className="font-semibold text-slate-900">${doctor.consultationFee}</span>
                       </div>
                     )}
                     {doctor.phone && (
-                      <div className="flex items-center text-sm text-gray-600">
+                      <div className="flex items-center text-sm text-slate-600">
                         <span>{doctor.phone}</span>
                       </div>
                     )}

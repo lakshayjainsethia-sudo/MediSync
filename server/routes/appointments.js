@@ -4,6 +4,7 @@ const { check } = require('express-validator');
 const { protect, authorize } = require('../middleware/auth');
 const Appointment = require('../models/Appointment');
 const User = require('../models/User');
+const aiService = require('../services/aiService');
 
 // @route   POST /api/appointments
 // @desc    Create a new appointment
@@ -17,12 +18,12 @@ router.post(
       check('date', 'Please include a valid date').isISO8601(),
       check('startTime', 'Start time is required').not().isEmpty(),
       check('endTime', 'End time is required').not().isEmpty(),
-      check('symptoms', 'Please include at least one symptom').isArray({ min: 1 })
+      check('symptoms', 'Symptoms are required').not().isEmpty()
     ]
   ],
   async (req, res) => {
     try {
-      const { doctor, date, startTime, endTime, symptoms, notes } = req.body;
+      const { doctor, date, startTime, endTime, symptoms, notes, priority } = req.body;
       
       // Check if doctor exists and is approved
       const doctorExists = await User.findOne({
@@ -47,6 +48,23 @@ router.post(
         return res.status(400).json({ message: 'Time slot is already booked' });
       }
       
+      // AI Triage Integration
+      let aiPriority = 'Normal';
+      let aiSuggestedDept = '';
+      let aiConfidence = 50;
+      let aiReasoning = '';
+      let aiRedFlags = [];
+      
+      if (symptoms) {
+        const symptomsText = Array.isArray(symptoms) ? symptoms.join(', ') : symptoms;
+        const triageResult = await aiService.analyzeSymptoms(symptomsText);
+        aiPriority = triageResult.aiPriority;
+        aiSuggestedDept = triageResult.aiSuggestedDept;
+        aiConfidence = triageResult.aiConfidence;
+        aiReasoning = triageResult.aiReasoning;
+        aiRedFlags = triageResult.aiRedFlags;
+      }
+      
       // Create new appointment
       const appointment = new Appointment({
         patient: req.user.id,
@@ -56,7 +74,13 @@ router.post(
         endTime,
         symptoms,
         notes: notes || '',
-        status: 'scheduled'
+        status: 'scheduled',
+        priority: priority || (aiPriority === 'High' ? 1 : 5),
+        aiPriority,
+        aiSuggestedDept,
+        aiConfidence,
+        aiReasoning,
+        aiRedFlags
       });
       
       await appointment.save();
@@ -65,7 +89,43 @@ router.post(
       await appointment.populate('doctor', 'name specialization');
       await appointment.populate('patient', 'name email');
       
+      // Real-Time Socket.io Alert if priority is HIGH
+      if (aiPriority === 'High') {
+        const io = req.app.get('io');
+        if (io) {
+          io.emit('triage_alert_high', {
+            appointmentId: appointment._id,
+            patientName: appointment.patient.name,
+            aiReasoning,
+            aiRedFlags,
+            date,
+            startTime
+          });
+        }
+      }
+      
       res.status(201).json(appointment);
+    } catch (err) {
+      console.error(err.message);
+      res.status(500).send('Server Error');
+    }
+  }
+);
+
+// @route   GET /api/appointments
+// @desc    Get all appointments (Admin, Receptionist, Pharmacist, Doctor)
+// @access  Private
+router.get(
+  '/',
+  [protect, authorize('admin', 'receptionist', 'pharmacist', 'doctor')],
+  async (req, res) => {
+    try {
+      const appointments = await Appointment.find()
+        .populate('doctor', 'name specialization')
+        .populate('patient', 'name email phone')
+        .sort({ date: 1, startTime: 1 });
+        
+      res.json(appointments);
     } catch (err) {
       console.error(err.message);
       res.status(500).send('Server Error');
@@ -83,11 +143,11 @@ router.get('/me', protect, async (req, res) => {
     if (req.user.role === 'patient') {
       appointments = await Appointment.find({ patient: req.user.id })
         .populate('doctor', 'name specialization')
-        .sort({ date: -1, startTime: -1 });
+        .sort({ priority: 1, date: -1, startTime: -1 }); // Priority 1 and 2 move to the top
     } else if (req.user.role === 'doctor') {
       appointments = await Appointment.find({ doctor: req.user.id })
         .populate('patient', 'name email phone')
-        .sort({ date: 1, startTime: 1 });
+        .sort({ priority: 1, date: 1, startTime: 1 }); // Priority 1 and 2 move to the top
     } else {
       return res.status(400).json({ message: 'Invalid role' });
     }
@@ -239,5 +299,60 @@ router.get('/available-slots', async (req, res) => {
     res.status(500).send('Server Error');
   }
 });
+
+// @route   PATCH /api/appointments/:id/risk-override
+// @desc    Manually override and flag appointment risk
+// @access  Private (Receptionist, Admin)
+router.patch(
+  '/:id/risk-override',
+  [protect, authorize('receptionist', 'admin')],
+  async (req, res) => {
+    try {
+      const { riskOverride, riskOverrideReason } = req.body;
+      const appointmentId = req.params.id;
+
+      const appointment = await Appointment.findById(appointmentId)
+        .populate('patient', 'name email phone');
+
+      if (!appointment) {
+        return res.status(404).json({ message: 'Appointment not found' });
+      }
+
+      appointment.riskOverride = riskOverride;
+      
+      if (riskOverride) {
+        appointment.riskOverrideReason = riskOverrideReason || '';
+        appointment.riskOverrideBy = req.user.id;
+        appointment.riskOverrideAt = new Date();
+      } else {
+        appointment.riskOverrideReason = '';
+      }
+
+      await appointment.save();
+
+      // Emit Socket.io alert
+      if (riskOverride && appointment.aiPriority !== 'High') {
+        const io = req.app.get('io');
+        if (io) {
+          io.emit('manual_triage_alert', {
+            appointmentId: appointment._id,
+            patientName: appointment.patient.name,
+            aiReasoning: appointment.aiReasoning,
+            aiRedFlags: appointment.aiRedFlags,
+            date: appointment.date,
+            startTime: appointment.startTime,
+            flag: 'MANUAL_OVERRIDE',
+            reason: appointment.riskOverrideReason
+          });
+        }
+      }
+
+      res.json(appointment);
+    } catch (err) {
+      console.error(err.message);
+      res.status(500).send('Server Error');
+    }
+  }
+);
 
 module.exports = router;

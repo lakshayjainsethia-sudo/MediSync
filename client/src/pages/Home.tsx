@@ -10,10 +10,10 @@ export default function Home() {
       {/* Hero Section */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20">
         <div className="text-center">
-          <h1 className="text-5xl font-bold text-gray-900 mb-6">
+          <h1 className="text-5xl font-bold text-slate-900 mb-6">
             Your Health, Our Priority
           </h1>
-          <p className="text-xl text-gray-600 mb-8 max-w-2xl mx-auto">
+          <p className="text-xl text-slate-600 mb-8 max-w-2xl mx-auto">
             Book appointments with trusted doctors, manage your medical records, and take control of your healthcare journey.
           </p>
           {!user && (
@@ -31,21 +31,21 @@ export default function Home() {
           <div className="bg-white p-6 rounded-lg shadow-md">
             <Calendar className="h-12 w-12 text-primary-600 mb-4" />
             <h3 className="text-xl font-semibold mb-2">Easy Booking</h3>
-            <p className="text-gray-600">
+            <p className="text-slate-600">
               Book appointments with doctors in just a few clicks. View available time slots and choose what works for you.
             </p>
           </div>
           <div className="bg-white p-6 rounded-lg shadow-md">
             <Users className="h-12 w-12 text-primary-600 mb-4" />
             <h3 className="text-xl font-semibold mb-2">Trusted Doctors</h3>
-            <p className="text-gray-600">
+            <p className="text-slate-600">
               Connect with verified and experienced healthcare professionals. All doctors are carefully vetted.
             </p>
           </div>
           <div className="bg-white p-6 rounded-lg shadow-md">
             <Shield className="h-12 w-12 text-primary-600 mb-4" />
             <h3 className="text-xl font-semibold mb-2">Secure & Private</h3>
-            <p className="text-gray-600">
+            <p className="text-slate-600">
               Your medical information is encrypted and secure. We prioritize your privacy and data protection.
             </p>
           </div>

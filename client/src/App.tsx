@@ -10,16 +10,18 @@ import PatientDashboard from './pages/PatientDashboard'
 import DoctorDashboard from './pages/DoctorDashboard'
 import StaffDashboard from './pages/StaffDashboard'
 import AdminDashboard from './pages/AdminDashboard'
-import AdminAnalytics from './pages/AdminAnalytics'
 import AdminUsers from './pages/AdminUsers'
 import Home from './pages/Home'
 import MedicalRecords from './pages/MedicalRecords'
 import Prescriptions from './pages/Prescriptions'
-import Billing from './pages/Billing'
+import BillingList from './pages/billing/BillingList'
+import BillDetail from './pages/billing/BillDetail'
 import Departments from './pages/Departments'
 import Profile from './pages/Profile'
 import Doctors from './pages/Doctors'
 import Appointments from './pages/Appointments'
+import Lobby from './pages/Lobby'
+import TriageQueue from './pages/TriageQueue'
 
 const STAFF_ROLES = ['nurse', 'receptionist', 'pharmacist'] as const
 
@@ -56,6 +58,7 @@ function AppRoutes() {
   return (
     <Routes>
       <Route path="/" element={<Home />} />
+      <Route path="/lobby" element={<Lobby />} />
       <Route path="/login" element={user ? <Navigate to={`/${user.role}/dashboard`} replace /> : <Login />} />
       <Route path="/register" element={user ? <Navigate to={`/${user.role}/dashboard`} replace /> : <Register />} />
       <Route
@@ -93,14 +96,7 @@ function AppRoutes() {
           </PrivateRoute>
         }
       />
-      <Route
-        path="/admin/analytics"
-        element={
-          <PrivateRoute allowedRoles={['admin']}>
-            <AdminAnalytics />
-          </PrivateRoute>
-        }
-      />
+
       <Route
         path="/admin/users"
         element={
@@ -128,8 +124,16 @@ function AppRoutes() {
       <Route
         path="/billing"
         element={
-          <PrivateRoute>
-            <Billing />
+          <PrivateRoute allowedRoles={['admin', 'receptionist']}>
+            <BillingList />
+          </PrivateRoute>
+        }
+      />
+      <Route
+        path="/billing/:id"
+        element={
+          <PrivateRoute allowedRoles={['admin', 'receptionist']}>
+            <BillDetail />
           </PrivateRoute>
         }
       />
@@ -146,6 +150,14 @@ function AppRoutes() {
         element={
           <PrivateRoute>
             <Appointments />
+          </PrivateRoute>
+        }
+      />
+      <Route
+        path="/triage"
+        element={
+          <PrivateRoute allowedRoles={['receptionist', 'admin', 'nurse']}>
+            <TriageQueue />
           </PrivateRoute>
         }
       />

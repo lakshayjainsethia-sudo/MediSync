@@ -74,8 +74,8 @@ export default function Register() {
           <div className="flex justify-center mb-4">
             <Stethoscope className="h-12 w-12 text-primary-600" />
           </div>
-          <h2 className="text-3xl font-bold text-gray-900">Create Account</h2>
-          <p className="text-gray-600 mt-2">Join MediSync today</p>
+          <h2 className="text-3xl font-bold text-slate-900">Create Account</h2>
+          <p className="text-slate-600 mt-2">Join MediSync today</p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-6">
@@ -174,7 +174,7 @@ export default function Register() {
           </button>
         </form>
 
-        <p className="mt-6 text-center text-sm text-gray-600">
+        <p className="mt-6 text-center text-sm text-slate-600">
           Already have an account?{' '}
           <Link to="/login" className="text-primary-600 hover:text-primary-700 font-semibold">
             Sign in

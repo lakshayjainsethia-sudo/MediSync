@@ -265,4 +265,8 @@ export interface DashboardStats {
     specialization?: string
     appointmentCount: number
   }>
+  bloodLevels?: Array<{
+    _id: string
+    total: number
+  }>
 }

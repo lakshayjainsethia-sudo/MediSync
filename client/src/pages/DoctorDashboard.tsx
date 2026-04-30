@@ -3,8 +3,8 @@ import { useAuth } from '../context/AuthContext'
 import { useNavigate } from 'react-router-dom'
 import { toast } from 'react-toastify'
 import { appointmentsApi } from '../utils/api'
-import { Appointment, User } from '../types'
-import { Calendar, Clock, User as UserIcon, LogOut, Check, X, FileText, Pill } from 'lucide-react'
+import { Appointment } from '../types'
+import { Calendar, Clock, User as UserIcon, LogOut, Check, FileText, Pill } from 'lucide-react'
 import Button from '../components/ui/Button'
 import Card, { CardHeader, CardContent } from '../components/ui/Card'
 import { format } from 'date-fns'
@@ -18,6 +18,11 @@ export default function DoctorDashboard() {
   const [diagnosis, setDiagnosis] = useState('')
   const [prescription, setPrescription] = useState('')
   const [loading, setLoading] = useState(false)
+
+  const handleLogout = async () => {
+    await logout()
+    navigate('/login')
+  }
 
   useEffect(() => {
     fetchAppointments()
@@ -78,10 +83,10 @@ export default function DoctorDashboard() {
 
   if (user && !user.isApproved) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
         <div className="bg-white rounded-lg shadow-lg p-8 max-w-md text-center">
-          <h2 className="text-2xl font-bold text-gray-900 mb-4">Account Pending Approval</h2>
-          <p className="text-gray-600 mb-6">
+          <h2 className="text-2xl font-bold text-slate-900 mb-4">Account Pending Approval</h2>
+          <p className="text-slate-600 mb-6">
             Your doctor account is pending admin approval. You will be able to access the dashboard once approved.
           </p>
           <button
@@ -96,21 +101,21 @@ export default function DoctorDashboard() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-slate-50 font-sans text-slate-900">
       {/* Header */}
-      <header className="bg-white shadow-sm">
+      <header className="bg-white/80 backdrop-blur-md shadow-sm sticky top-0 z-50 border-b border-slate-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
           <div className="flex justify-between items-center">
             <div>
-              <h1 className="text-2xl font-bold text-gray-900">Doctor Dashboard</h1>
-              <p className="text-sm text-gray-600">Welcome, Dr. {user?.name}</p>
+              <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Doctor Dashboard</h1>
+              <p className="text-sm text-slate-600 font-medium">Welcome, Dr. {user?.name}</p>
               {user?.specialization && (
-                <p className="text-sm text-primary-600">{user.specialization}</p>
+                <p className="text-sm text-blue-600 font-semibold">{user.specialization}</p>
               )}
             </div>
             <button
               onClick={handleLogout}
-              className="flex items-center space-x-2 px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg transition"
+              className="flex items-center space-x-2 px-4 py-2 text-slate-700 hover:bg-slate-100/50 rounded-lg transition-colors font-medium border border-transparent hover:border-slate-200"
             >
               <LogOut className="h-5 w-5" />
               <span>Logout</span>
@@ -126,10 +131,10 @@ export default function DoctorDashboard() {
             <CardContent>
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-gray-600">Total Appointments</p>
-                  <p className="text-2xl font-bold text-gray-900">{appointments.length}</p>
+                  <p className="text-sm text-slate-600 font-medium">Total Appointments</p>
+                  <p className="text-2xl font-bold text-slate-900">{appointments.length}</p>
                 </div>
-                <Calendar className="h-8 w-8 text-primary-600 opacity-20" />
+                <Calendar className="h-8 w-8 text-blue-600 opacity-20" />
               </div>
             </CardContent>
           </Card>
@@ -137,10 +142,10 @@ export default function DoctorDashboard() {
             <CardContent>
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-gray-600">Upcoming</p>
-                  <p className="text-2xl font-bold text-primary-600">{upcomingAppointments.length}</p>
+                  <p className="text-sm text-slate-600 font-medium">Upcoming</p>
+                  <p className="text-2xl font-bold text-blue-600">{upcomingAppointments.length}</p>
                 </div>
-                <Clock className="h-8 w-8 text-primary-600 opacity-20" />
+                <Clock className="h-8 w-8 text-blue-600 opacity-20" />
               </div>
             </CardContent>
           </Card>
@@ -148,8 +153,8 @@ export default function DoctorDashboard() {
             <CardContent>
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-gray-600">Completed</p>
-                  <p className="text-2xl font-bold text-green-600">
+                  <p className="text-sm text-slate-600 font-medium">Completed</p>
+                  <p className="text-2xl font-bold text-emerald-600">
                     {appointments.filter(a => a.status === 'completed').length}
                   </p>
                 </div>
@@ -161,51 +166,51 @@ export default function DoctorDashboard() {
 
         {/* Upcoming Appointments */}
         <Card className="mb-8">
-          <CardHeader title="Upcoming Appointments" />
-          <CardContent>
-            <div className="divide-y divide-gray-200">
+          <CardHeader title="Upcoming Appointments" className="border-b border-slate-100" />
+          <CardContent className="bg-white/60 backdrop-blur-xl">
+            <div className="divide-y divide-slate-100">
               {upcomingAppointments.length === 0 ? (
-                <div className="py-12 text-center text-gray-500">
-                  <Calendar className="h-12 w-12 mx-auto mb-4 text-gray-400" />
+                <div className="py-12 text-center text-slate-500">
+                  <Calendar className="h-12 w-12 mx-auto mb-4 text-slate-300" />
                   <p>No upcoming appointments</p>
                 </div>
               ) : (
                 upcomingAppointments.map((apt) => {
                   const patient = typeof apt.patient === 'object' ? apt.patient : null
                   return (
-                    <div key={apt._id} className="py-4 hover:bg-gray-50">
+                    <div key={apt._id} className="py-5 hover:bg-slate-50/50 transition duration-150">
                       <div className="flex justify-between items-start">
                         <div className="flex-1">
                           <div className="flex items-center space-x-3 mb-2">
-                            <UserIcon className="h-5 w-5 text-primary-600" />
-                            <h3 className="text-lg font-semibold text-gray-900">
+                            <UserIcon className="h-5 w-5 text-blue-600" />
+                            <h3 className="text-lg font-semibold text-slate-900">
                               {patient?.name || 'Unknown Patient'}
                             </h3>
                           </div>
-                          <div className="flex items-center space-x-4 text-sm text-gray-600 ml-8">
+                          <div className="flex items-center space-x-4 text-sm text-slate-600 ml-8">
                             <div className="flex items-center space-x-1">
-                              <Calendar className="h-4 w-4" />
+                              <Calendar className="h-4 w-4 text-slate-400" />
                               <span>{format(new Date(apt.date), 'MMM dd, yyyy')}</span>
                             </div>
                             <div className="flex items-center space-x-1">
-                              <Clock className="h-4 w-4" />
+                              <Clock className="h-4 w-4 text-slate-400" />
                               <span>{apt.startTime} - {apt.endTime}</span>
                             </div>
                             {patient?.email && (
-                              <span className="text-gray-500">{patient.email}</span>
+                              <span className="text-slate-400">{patient.email}</span>
                             )}
                           </div>
                           {apt.symptoms && apt.symptoms.length > 0 && (
-                            <div className="mt-2 ml-8">
-                              <p className="text-sm text-gray-600">
-                                <span className="font-medium">Symptoms:</span> {apt.symptoms.join(', ')}
+                            <div className="mt-3 ml-8">
+                              <p className="text-sm text-slate-700 bg-slate-50 p-2 rounded border border-slate-100">
+                                <span className="font-semibold px-1">Symptoms:</span> {Array.isArray(apt.symptoms) ? apt.symptoms.join(', ') : apt.symptoms}
                               </p>
                             </div>
                           )}
                           {apt.notes && (
                             <div className="mt-2 ml-8">
-                              <p className="text-sm text-gray-600">
-                                <span className="font-medium">Notes:</span> {apt.notes}
+                              <p className="text-sm text-slate-600 italic">
+                                <span className="font-medium not-italic">Notes:</span> {apt.notes}
                               </p>
                             </div>
                           )}
@@ -263,11 +268,11 @@ export default function DoctorDashboard() {
               pastAppointments.map((apt) => {
                 const patient = typeof apt.patient === 'object' ? apt.patient : null
                 return (
-                  <div key={apt._id} className="py-4 hover:bg-gray-50">
+                  <div key={apt._id} className="py-4 hover:bg-slate-50">
                     <div className="flex-1">
                       <div className="flex items-center space-x-3 mb-2">
                         <UserIcon className="h-5 w-5 text-primary-600" />
-                        <h3 className="text-lg font-semibold text-gray-900">
+                        <h3 className="text-lg font-semibold text-slate-900">
                           {patient?.name || 'Unknown Patient'}
                         </h3>
                         <span className={`px-2 py-1 rounded text-xs ${
@@ -277,7 +282,7 @@ export default function DoctorDashboard() {
                           {apt.status}
                         </span>
                       </div>
-                      <div className="flex items-center space-x-4 text-sm text-gray-600 ml-8 mb-2">
+                      <div className="flex items-center space-x-4 text-sm text-slate-600 ml-8 mb-2">
                         <div className="flex items-center space-x-1">
                           <Calendar className="h-4 w-4" />
                           <span>{format(new Date(apt.date), 'MMM dd, yyyy')}</span>
@@ -289,14 +294,14 @@ export default function DoctorDashboard() {
                       </div>
                       {apt.diagnosis && (
                         <div className="mt-2 ml-8">
-                          <p className="text-sm text-gray-600">
+                          <p className="text-sm text-slate-600">
                             <span className="font-medium">Diagnosis:</span> {apt.diagnosis}
                           </p>
                         </div>
                       )}
                       {apt.prescription && (
                         <div className="mt-2 ml-8">
-                          <p className="text-sm text-gray-600">
+                          <p className="text-sm text-slate-600">
                             <span className="font-medium">Prescription:</span> {apt.prescription}
                           </p>
                         </div>
@@ -316,7 +321,7 @@ export default function DoctorDashboard() {
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-lg max-w-2xl w-full">
             <div className="px-6 py-4 border-b border-gray-200">
-              <h2 className="text-xl font-semibold text-gray-900">Complete Appointment</h2>
+              <h2 className="text-xl font-semibold text-slate-900">Complete Appointment</h2>
             </div>
             <div className="px-6 py-4 space-y-4">
               <div>
@@ -347,7 +352,7 @@ export default function DoctorDashboard() {
                     setDiagnosis('')
                     setPrescription('')
                   }}
-                  className="px-6 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition"
+                  className="px-6 py-2 border border-gray-300 rounded-lg hover:bg-slate-50 transition"
                 >
                   Cancel
                 </button>

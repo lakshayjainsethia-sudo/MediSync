@@ -62,12 +62,12 @@ export default function Prescriptions() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 p-6">
+    <div className="min-h-screen bg-slate-50 p-6">
       <div className="max-w-7xl mx-auto">
         <div className="mb-6 flex justify-between items-center">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900">Prescriptions</h1>
-            <p className="text-gray-600 mt-1">View and manage prescriptions</p>
+            <h1 className="text-3xl font-bold text-slate-900">Prescriptions</h1>
+            <p className="text-slate-600 mt-1">View and manage prescriptions</p>
           </div>
           {user?.role === 'doctor' && (
             <Button onClick={() => setShowCreateModal(true)}>
@@ -112,10 +112,10 @@ export default function Prescriptions() {
                   <CardContent>
                     <div className="flex justify-between items-start mb-4">
                       <div>
-                        <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                        <h3 className="text-lg font-semibold text-slate-900 mb-2">
                           Prescription #{prescription._id.slice(-6)}
                         </h3>
-                        <div className="flex items-center space-x-4 text-sm text-gray-600">
+                        <div className="flex items-center space-x-4 text-sm text-slate-600">
                           <div className="flex items-center">
                             <Calendar className="h-4 w-4 mr-1" />
                             {format(new Date(prescription.issuedDate), 'MMM dd, yyyy')}
@@ -147,11 +147,11 @@ export default function Prescriptions() {
                       <p className="text-sm font-medium text-gray-700 mb-2">Medications:</p>
                       <div className="space-y-2">
                         {prescription.medications.map((med, index) => (
-                          <div key={index} className="p-3 bg-gray-50 rounded-lg">
+                          <div key={index} className="p-3 bg-slate-50 rounded-lg">
                             <div className="flex justify-between items-start">
                               <div>
-                                <p className="font-medium text-gray-900">{med.name}</p>
-                                <p className="text-sm text-gray-600">
+                                <p className="font-medium text-slate-900">{med.name}</p>
+                                <p className="text-sm text-slate-600">
                                   {med.dosage} - {med.frequency}
                                 </p>
                                 {med.instructions && (
@@ -172,7 +172,7 @@ export default function Prescriptions() {
                     {prescription.instructions && (
                       <div className="mb-4 p-3 bg-blue-50 rounded-lg">
                         <p className="text-sm font-medium text-gray-700 mb-1">Instructions:</p>
-                        <p className="text-sm text-gray-600">{prescription.instructions}</p>
+                        <p className="text-sm text-slate-600">{prescription.instructions}</p>
                       </div>
                     )}
 
@@ -212,9 +212,9 @@ export default function Prescriptions() {
               <label className="block text-sm font-medium text-gray-700 mb-1">Medications</label>
               <div className="space-y-2">
                 {selectedPrescription.medications.map((med, index) => (
-                  <div key={index} className="p-3 bg-gray-50 rounded-lg">
-                    <p className="font-medium text-gray-900">{med.name}</p>
-                    <p className="text-sm text-gray-600">{med.dosage} - {med.frequency}</p>
+                  <div key={index} className="p-3 bg-slate-50 rounded-lg">
+                    <p className="font-medium text-slate-900">{med.name}</p>
+                    <p className="text-sm text-slate-600">{med.dosage} - {med.frequency}</p>
                     {med.duration && (
                       <p className="text-sm text-gray-500">
                         Duration: {med.duration.value} {med.duration.unit}
@@ -230,7 +230,7 @@ export default function Prescriptions() {
             {selectedPrescription.instructions && (
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">General Instructions</label>
-                <p className="text-gray-900">{selectedPrescription.instructions}</p>
+                <p className="text-slate-900">{selectedPrescription.instructions}</p>
               </div>
             )}
           </div>

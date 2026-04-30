@@ -50,12 +50,12 @@ export default function MedicalRecords() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 p-6">
+    <div className="min-h-screen bg-slate-50 p-6">
       <div className="max-w-7xl mx-auto">
         <div className="mb-6 flex justify-between items-center">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900">Medical Records</h1>
-            <p className="text-gray-600 mt-1">View and manage medical records</p>
+            <h1 className="text-3xl font-bold text-slate-900">Medical Records</h1>
+            <p className="text-slate-600 mt-1">View and manage medical records</p>
           </div>
           {user?.role === 'doctor' && (
             <Button onClick={() => setShowCreateModal(true)}>
@@ -100,10 +100,10 @@ export default function MedicalRecords() {
                   <CardContent>
                     <div className="flex justify-between items-start mb-4">
                       <div>
-                        <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                        <h3 className="text-lg font-semibold text-slate-900 mb-2">
                           {record.chiefComplaint}
                         </h3>
-                        <div className="flex items-center space-x-4 text-sm text-gray-600">
+                        <div className="flex items-center space-x-4 text-sm text-slate-600">
                           <div className="flex items-center">
                             <Calendar className="h-4 w-4 mr-1" />
                             {format(new Date(record.visitDate), 'MMM dd, yyyy')}
@@ -130,17 +130,17 @@ export default function MedicalRecords() {
                     {record.symptoms && record.symptoms.length > 0 && (
                       <div className="mb-3">
                         <p className="text-sm font-medium text-gray-700 mb-1">Symptoms:</p>
-                        <p className="text-sm text-gray-600">{record.symptoms.join(', ')}</p>
+                        <p className="text-sm text-slate-600">{record.symptoms.join(', ')}</p>
                       </div>
                     )}
 
                     {record.vitalSigns && (
-                      <div className="mb-3 p-3 bg-gray-50 rounded-lg">
+                      <div className="mb-3 p-3 bg-slate-50 rounded-lg">
                         <p className="text-sm font-medium text-gray-700 mb-2">Vital Signs:</p>
                         <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-sm">
                           {record.vitalSigns.bloodPressure && (
                             <div>
-                              <span className="text-gray-600">BP: </span>
+                              <span className="text-slate-600">BP: </span>
                               <span className="font-medium">
                                 {record.vitalSigns.bloodPressure.systolic}/
                                 {record.vitalSigns.bloodPressure.diastolic}
@@ -149,13 +149,13 @@ export default function MedicalRecords() {
                           )}
                           {record.vitalSigns.heartRate && (
                             <div>
-                              <span className="text-gray-600">HR: </span>
+                              <span className="text-slate-600">HR: </span>
                               <span className="font-medium">{record.vitalSigns.heartRate} bpm</span>
                             </div>
                           )}
                           {record.vitalSigns.temperature && (
                             <div>
-                              <span className="text-gray-600">Temp: </span>
+                              <span className="text-slate-600">Temp: </span>
                               <span className="font-medium">
                                 {record.vitalSigns.temperature.value}°{record.vitalSigns.temperature.unit === 'celsius' ? 'C' : 'F'}
                               </span>
@@ -163,7 +163,7 @@ export default function MedicalRecords() {
                           )}
                           {record.vitalSigns.oxygenSaturation && (
                             <div>
-                              <span className="text-gray-600">SpO2: </span>
+                              <span className="text-slate-600">SpO2: </span>
                               <span className="font-medium">{record.vitalSigns.oxygenSaturation}%</span>
                             </div>
                           )}
@@ -174,7 +174,7 @@ export default function MedicalRecords() {
                     {record.notes && (
                       <div className="mb-3">
                         <p className="text-sm font-medium text-gray-700 mb-1">Notes:</p>
-                        <p className="text-sm text-gray-600">{record.notes}</p>
+                        <p className="text-sm text-slate-600">{record.notes}</p>
                       </div>
                     )}
 
@@ -212,16 +212,16 @@ export default function MedicalRecords() {
           <div className="space-y-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Chief Complaint</label>
-              <p className="text-gray-900">{selectedRecord.chiefComplaint}</p>
+              <p className="text-slate-900">{selectedRecord.chiefComplaint}</p>
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Primary Diagnosis</label>
-              <p className="text-gray-900">{selectedRecord.diagnosis.primary}</p>
+              <p className="text-slate-900">{selectedRecord.diagnosis.primary}</p>
             </div>
             {selectedRecord.symptoms && selectedRecord.symptoms.length > 0 && (
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Symptoms</label>
-                <p className="text-gray-900">{selectedRecord.symptoms.join(', ')}</p>
+                <p className="text-slate-900">{selectedRecord.symptoms.join(', ')}</p>
               </div>
             )}
             {selectedRecord.vitalSigns && (
@@ -246,7 +246,7 @@ export default function MedicalRecords() {
             {selectedRecord.notes && (
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Notes</label>
-                <p className="text-gray-900">{selectedRecord.notes}</p>
+                <p className="text-slate-900">{selectedRecord.notes}</p>
               </div>
             )}
           </div>

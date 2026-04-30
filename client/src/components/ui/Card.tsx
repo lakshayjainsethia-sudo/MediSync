@@ -22,8 +22,8 @@ export default function Card({
 
   return (
     <div
-      className={`bg-white rounded-lg shadow-md border border-gray-200 ${paddingClasses[padding]} ${
-        hover ? 'hover:shadow-lg transition-shadow duration-200' : ''
+      className={`glass-card ${paddingClasses[padding]} ${
+        hover ? 'hover:-translate-y-1 hover:shadow-xl' : ''
       } ${className}`}
     >
       {children}
@@ -32,8 +32,8 @@ export default function Card({
 }
 
 interface CardHeaderProps {
-  title?: string
-  subtitle?: string
+  title?: ReactNode
+  subtitle?: ReactNode
   action?: ReactNode
   className?: string
 }

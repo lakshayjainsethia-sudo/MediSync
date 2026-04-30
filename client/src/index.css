@@ -1,14 +1,31 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 body {
   margin: 0;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
     'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
     sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  background-color: #f8fafc; /* Slate 50 to contrast with Deep Charcoal sidebars */
+  color: #121826; /* Deep Charcoal */
+}
+
+/* Elite Glassmorphism Defaults */
+.glass-card {
+  @apply bg-white/70 backdrop-blur-md rounded-2xl shadow-sm border border-white/50 transition-all;
+}
+
+.glass-card:hover {
+  @apply shadow-lg -translate-y-[2px] bg-white/80;
+}
+
+.heading-clinical {
+  @apply text-slate-800 font-bold tracking-tight;
 }
 
 * {

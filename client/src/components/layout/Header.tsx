@@ -72,7 +72,7 @@ export default function Header() {
   }
 
   return (
-    <header className="bg-white shadow-sm border-b border-gray-200 sticky top-0 z-40">
+    <header className="bg-white/70 backdrop-blur-md shadow-sm border-b border-white/50 sticky top-0 z-40">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-16">
           {/* Logo */}
@@ -130,14 +130,9 @@ export default function Header() {
                   >
                     Users
                   </Link>
-                  <Link
-                    to="/admin/analytics"
-                    className="text-gray-700 hover:text-primary-600 transition-colors"
-                  >
-                    Analytics
-                  </Link>
                 </>
               )}
+
             </nav>
           )}
 
@@ -348,15 +343,9 @@ export default function Header() {
                   >
                     Users
                   </Link>
-                  <Link
-                    to="/admin/analytics"
-                    className="px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg"
-                    onClick={() => setMobileMenuOpen(false)}
-                  >
-                    Analytics
-                  </Link>
                 </>
               )}
+
             </nav>
           </div>
         )}

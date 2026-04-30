@@ -1,0 +1,65 @@
+version: '3.8'
+
+services:
+  # Node.js API Gateway (Service A)
+  api-gateway:
+    build: 
+      context: ./server
+      dockerfile: Dockerfile
+    ports:
+      - "5000:5000"
+    environment:
+      - NODE_ENV=development
+      - PORT=5000
+      - MONGO_URI=${MONGO_URI:-mongodb://mongo:27017/medisync}
+      - INTELLIGENCE_ENGINE_URL=http://intelligence-engine:8000
+    depends_on:
+      - mongo
+      - intelligence-engine
+    networks:
+      - medisync-network
+
+  # FastAPI Intelligence Engine (Service B)
+  intelligence-engine:
+    build:
+      context: ./intelligence-engine
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    environment:
+      - MONGO_URI=${MONGO_URI:-mongodb://mongo:27017/medisync}
+    depends_on:
+      - mongo
+    networks:
+      - medisync-network
+
+  # Frontend (Vite)
+  frontend:
+    build:
+      context: ./client
+      dockerfile: Dockerfile
+    ports:
+      - "5173:5173"
+    environment:
+      - VITE_API_BASE_URL=http://localhost:5000/api
+    depends_on:
+      - api-gateway
+    networks:
+      - medisync-network
+
+  # Database
+  mongo:
+    image: mongo:latest
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo-data:/data/db
+    networks:
+      - medisync-network
+
+networks:
+  medisync-network:
+    driver: bridge
+
+volumes:
+  mongo-data:

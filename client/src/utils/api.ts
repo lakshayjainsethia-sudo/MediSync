@@ -70,6 +70,7 @@ export const patientsApi = {
 
 export const appointmentsApi = {
   create: (data: any) => api.post('/appointments', data),
+  getAll: () => api.get('/appointments'),
   getMine: () => api.get('/appointments/me'),
   cancel: (id: string) => api.put(`/appointments/${id}/cancel`),
   complete: (id: string, data: { diagnosis?: string; prescription?: string }) => api.put(`/appointments/${id}/complete`, data),
@@ -115,7 +116,7 @@ export const adminApi = {
   approveDoctor: (id: string) => api.put(`/admin/doctors/${id}/approve`),
   approveUser: (id: string) => api.put(`/admin/users/${id}/approve`),
   deleteDoctor: (id: string) => api.delete(`/admin/doctors/${id}`),
-  getAnalytics: () => api.get('/admin/analytics'),
+
   getAllUsers: () => api.get('/admin/users'),
   deleteUser: (id: string) => api.delete(`/admin/users/${id}`),
 }

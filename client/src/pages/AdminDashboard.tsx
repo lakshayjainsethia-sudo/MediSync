@@ -7,6 +7,7 @@ import { useAdminDashboard } from '../features/admin/hooks/useAdminDashboard'
 import StatsOverview from '../features/admin/components/StatsOverview'
 import AppointmentsInsights from '../features/admin/components/AppointmentsInsights'
 import RevenueInsights from '../features/admin/components/RevenueInsights'
+import BloodInsights from '../features/admin/components/BloodInsights'
 import TopDoctorsTable from '../features/admin/components/TopDoctorsTable'
 import UserManagementPanel from '../features/admin/components/UserManagementPanel'
 
@@ -19,8 +20,8 @@ export default function AdminDashboard() {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="text-center">
-          <h2 className="text-2xl font-bold text-gray-900 mb-4">Access Denied</h2>
-          <p className="text-gray-600">You don't have permission to access this page.</p>
+          <h2 className="text-2xl font-bold text-slate-900 mb-4">Access Denied</h2>
+          <p className="text-slate-600">You don't have permission to access this page.</p>
         </div>
       </div>
     )
@@ -79,7 +80,7 @@ export default function AdminDashboard() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 p-6">
+    <div className="min-h-screen bg-slate-50 p-6 font-sans">
       <div className="max-w-7xl mx-auto space-y-6">
         {error && (
           <div className="rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 text-amber-800">
@@ -101,13 +102,14 @@ export default function AdminDashboard() {
                 breakdownData={analytics.revenueBreakdown}
                 userDistribution={analytics.userDistribution}
               />
+              <BloodInsights data={analytics.bloodLevels} />
             </div>
 
             <TopDoctorsTable doctors={analytics.topDoctors} />
           </>
         ) : (
           <Card className="p-6">
-            <p className="text-gray-600">
+            <p className="text-slate-600">
               We couldn't load analytics data. Please try refreshing the dashboard.
             </p>
           </Card>

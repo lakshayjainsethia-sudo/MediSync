@@ -50,8 +50,9 @@ router.get('/patient/:patientId', async (req, res) => {
   try {
     const { patientId } = req.params;
 
-    // Check if user is authorized (patient themselves, their doctor, or admin)
-    if (req.user.role !== 'admin' && req.user.role !== 'doctor' && req.user.id !== patientId) {
+    // Check if user is authorized (patient themselves, their doctor, admin, receptionist, or pharmacist)
+    const allowedRoles = ['admin', 'doctor', 'receptionist', 'pharmacist'];
+    if (!allowedRoles.includes(req.user.role) && req.user.id !== patientId) {
       return res.status(403).json({ message: 'Not authorized' });
     }
 
@@ -110,8 +111,8 @@ router.get('/:id', async (req, res) => {
     }
 
     // Check authorization
-    if (req.user.role !== 'admin' && 
-        req.user.role !== 'doctor' && 
+    const allowedRoles = ['admin', 'doctor', 'receptionist', 'pharmacist'];
+    if (!allowedRoles.includes(req.user.role) && 
         record.patient._id.toString() !== req.user.id) {
       return res.status(403).json({ message: 'Not authorized' });
     }

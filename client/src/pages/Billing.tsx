@@ -73,11 +73,11 @@ export default function Billing() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 p-6">
+    <div className="min-h-screen bg-slate-50 p-6">
       <div className="max-w-7xl mx-auto">
         <div className="mb-6">
-          <h1 className="text-3xl font-bold text-gray-900">Billing</h1>
-          <p className="text-gray-600 mt-1">View and manage invoices</p>
+          <h1 className="text-3xl font-bold text-slate-900">Billing</h1>
+          <p className="text-slate-600 mt-1">View and manage invoices</p>
         </div>
 
         {/* Search */}
@@ -114,10 +114,10 @@ export default function Billing() {
                   <CardContent>
                     <div className="flex justify-between items-start mb-4">
                       <div>
-                        <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                        <h3 className="text-lg font-semibold text-slate-900 mb-2">
                           {bill.invoiceNumber}
                         </h3>
-                        <div className="flex items-center space-x-4 text-sm text-gray-600">
+                        <div className="flex items-center space-x-4 text-sm text-slate-600">
                           <div className="flex items-center">
                             <Calendar className="h-4 w-4 mr-1" />
                             {format(new Date(bill.createdAt || ''), 'MMM dd, yyyy')}
@@ -139,23 +139,23 @@ export default function Billing() {
 
                     <div className="mb-4">
                       <div className="flex justify-between items-center mb-2">
-                        <span className="text-sm text-gray-600">Subtotal:</span>
+                        <span className="text-sm text-slate-600">Subtotal:</span>
                         <span className="font-medium">${bill.subtotal.toFixed(2)}</span>
                       </div>
                       {bill.tax > 0 && (
                         <div className="flex justify-between items-center mb-2">
-                          <span className="text-sm text-gray-600">Tax:</span>
+                          <span className="text-sm text-slate-600">Tax:</span>
                           <span className="font-medium">${bill.tax.toFixed(2)}</span>
                         </div>
                       )}
                       {bill.discount > 0 && (
                         <div className="flex justify-between items-center mb-2">
-                          <span className="text-sm text-gray-600">Discount:</span>
+                          <span className="text-sm text-slate-600">Discount:</span>
                           <span className="font-medium text-green-600">-${bill.discount.toFixed(2)}</span>
                         </div>
                       )}
                       <div className="flex justify-between items-center pt-2 border-t border-gray-200">
-                        <span className="text-lg font-semibold text-gray-900">Total:</span>
+                        <span className="text-lg font-semibold text-slate-900">Total:</span>
                         <span className="text-lg font-bold text-primary-600">${bill.total.toFixed(2)}</span>
                       </div>
                     </div>
@@ -165,7 +165,7 @@ export default function Billing() {
                       <div className="space-y-1">
                         {bill.items.map((item, index) => (
                           <div key={index} className="flex justify-between text-sm">
-                            <span className="text-gray-600">{item.description} (x{item.quantity})</span>
+                            <span className="text-slate-600">{item.description} (x{item.quantity})</span>
                             <span className="font-medium">${item.total.toFixed(2)}</span>
                           </div>
                         ))}

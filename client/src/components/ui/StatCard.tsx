@@ -1,5 +1,6 @@
 import { ReactNode } from 'react'
 import { TrendingUp, TrendingDown } from 'lucide-react'
+import SkeletonLoader from './SkeletonLoader'
 
 interface StatCardProps {
   title: string
@@ -11,6 +12,7 @@ interface StatCardProps {
   }
   subtitle?: string
   className?: string
+  loading?: boolean
 }
 
 export default function StatCard({
@@ -19,16 +21,27 @@ export default function StatCard({
   icon,
   trend,
   subtitle,
-  className = ''
+  className = '',
+  loading = false
 }: StatCardProps) {
+  if (loading) {
+    return (
+      <div className={`bg-white/80 backdrop-blur-md rounded-2xl shadow-sm p-6 border border-slate-100 ${className}`}>
+        <SkeletonLoader className="mb-4 w-1/2 h-5" />
+        <SkeletonLoader className="mb-2 w-3/4 h-8" />
+        {subtitle && <SkeletonLoader className="w-1/3 h-4 mt-2" />}
+      </div>
+    )
+  }
+
   return (
-    <div className={`bg-white rounded-lg shadow-md p-6 border border-gray-200 ${className}`}>
+    <div className={`bg-white/80 backdrop-blur-md rounded-2xl shadow-sm p-6 border border-slate-100 transition-all hover:shadow-lg ${className}`}>
       <div className="flex items-center justify-between">
         <div className="flex-1">
-          <p className="text-sm font-medium text-gray-600 mb-1">{title}</p>
-          <p className="text-3xl font-bold text-gray-900">{value}</p>
+          <p className="text-sm font-semibold text-slate-500 mb-1 uppercase tracking-wider">{title}</p>
+          <p className="text-3xl font-bold text-slate-800">{value}</p>
           {subtitle && (
-            <p className="text-sm text-gray-500 mt-1">{subtitle}</p>
+            <p className="text-sm text-slate-500 mt-1">{subtitle}</p>
           )}
           {trend && (
             <div className={`flex items-center mt-2 text-sm ${

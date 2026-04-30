@@ -66,12 +66,12 @@ export default function Profile() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 p-6">
+    <div className="min-h-screen bg-slate-50 p-6">
       <div className="max-w-4xl mx-auto">
         <div className="mb-6 flex justify-between items-center">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900">My Profile</h1>
-            <p className="text-gray-600 mt-1">Manage your account information</p>
+            <h1 className="text-3xl font-bold text-slate-900">My Profile</h1>
+            <p className="text-slate-600 mt-1">Manage your account information</p>
           </div>
           {!isEditing ? (
             <Button onClick={() => setIsEditing(true)}>
@@ -110,8 +110,8 @@ export default function Profile() {
                 <div className="mx-auto h-24 w-24 bg-primary-600 rounded-full flex items-center justify-center text-white text-3xl font-bold mb-4">
                   {user.name.charAt(0).toUpperCase()}
                 </div>
-                <h2 className="text-xl font-semibold text-gray-900 mb-1">{user.name}</h2>
-                <p className="text-sm text-gray-600 mb-2">{user.email}</p>
+                <h2 className="text-xl font-semibold text-slate-900 mb-1">{user.name}</h2>
+                <p className="text-sm text-slate-600 mb-2">{user.email}</p>
                 <span className="inline-block px-3 py-1 bg-primary-100 text-primary-700 rounded-full text-sm font-medium">
                   {user.role.charAt(0).toUpperCase() + user.role.slice(1)}
                 </span>
@@ -155,7 +155,7 @@ export default function Profile() {
                     <label className="block text-sm font-medium text-gray-700 mb-1">
                       Specialization
                     </label>
-                    <p className="text-gray-900">{user.specialization}</p>
+                    <p className="text-slate-900">{user.specialization}</p>
                   </div>
                 )}
                 {user.experience && (
@@ -163,7 +163,7 @@ export default function Profile() {
                     <label className="block text-sm font-medium text-gray-700 mb-1">
                       Experience
                     </label>
-                    <p className="text-gray-900">{user.experience} years</p>
+                    <p className="text-slate-900">{user.experience} years</p>
                   </div>
                 )}
               </div>

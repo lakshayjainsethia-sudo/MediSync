@@ -34,8 +34,8 @@ export default function Login() {
           <div className="flex justify-center mb-4">
             <Stethoscope className="h-12 w-12 text-primary-600" />
           </div>
-          <h2 className="text-3xl font-bold text-gray-900">Welcome Back</h2>
-          <p className="text-gray-600 mt-2">Sign in to your account</p>
+          <h2 className="text-3xl font-bold text-slate-900">Welcome Back</h2>
+          <p className="text-slate-600 mt-2">Sign in to your account</p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-6">
@@ -78,7 +78,7 @@ export default function Login() {
           </button>
         </form>
 
-        <p className="mt-6 text-center text-sm text-gray-600">
+        <p className="mt-6 text-center text-sm text-slate-600">
           Don't have an account?{' '}
           <Link to="/register" className="text-primary-600 hover:text-primary-700 font-semibold">
             Sign up

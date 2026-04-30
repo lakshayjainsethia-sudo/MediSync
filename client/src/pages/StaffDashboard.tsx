@@ -1,4 +1,4 @@
-import { ClipboardList, CalendarCheck2, FileText, ShieldCheck } from 'lucide-react'
+import { ClipboardList, CalendarCheck2, FileText, ShieldCheck, Activity } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import Card, { CardContent, CardHeader } from '../components/ui/Card'
 import StatCard from '../components/ui/StatCard'
@@ -55,14 +55,14 @@ export default function StaffDashboard() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 p-6">
+    <div className="min-h-screen bg-slate-50 p-6 font-sans">
       <div className="max-w-6xl mx-auto space-y-6">
         <div className="flex flex-col gap-2">
           <p className="text-sm font-medium text-primary-600 uppercase tracking-wide">
             Welcome back, {user.name}
           </p>
-          <h1 className="text-3xl font-bold text-gray-900">{copy.title}</h1>
-          <p className="text-gray-600 max-w-2xl">{copy.description}</p>
+          <h1 className="text-3xl font-bold text-slate-900">{copy.title}</h1>
+          <p className="text-slate-600 max-w-2xl">{copy.description}</p>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -100,8 +100,8 @@ export default function StaffDashboard() {
                       {action.icon}
                     </div>
                     <div>
-                      <h3 className="text-lg font-semibold text-gray-900">{action.title}</h3>
-                      <p className="text-sm text-gray-600 mt-1">{action.description}</p>
+                      <h3 className="text-lg font-semibold text-slate-900">{action.title}</h3>
+                      <p className="text-sm text-slate-600 mt-1">{action.description}</p>
                       <Button variant="outline" size="sm" className="mt-3" onClick={() => navigate(action.href)}>
                         Open
                       </Button>
@@ -109,6 +109,22 @@ export default function StaffDashboard() {
                   </div>
                 </Card>
               ))}
+              {user.role === 'receptionist' && (
+                <Card className="border border-red-100 shadow-sm bg-red-50/50" padding="lg" hover>
+                  <div className="flex items-start space-x-3">
+                    <div className="p-2 rounded-lg bg-red-100">
+                      <Activity className="h-5 w-5 text-red-600" />
+                    </div>
+                    <div>
+                      <h3 className="text-lg font-semibold text-red-900">Triage Queue</h3>
+                      <p className="text-sm text-slate-600 mt-1">Smart AI routing & emergencies.</p>
+                      <Button variant="outline" size="sm" className="mt-3 border-red-200 hover:bg-red-50 text-red-700" onClick={() => navigate('/triage')}>
+                        Open Priorities
+                      </Button>
+                    </div>
+                  </div>
+                </Card>
+              )}
             </div>
           </CardContent>
         </Card>

@@ -10,7 +10,7 @@ import Card, { CardHeader, CardContent } from '../components/ui/Card'
 import { format } from 'date-fns'
 
 export default function Appointments() {
-  const { user, logout } = useAuth()
+  const { user } = useAuth()
   const navigate = useNavigate()
   const [appointments, setAppointments] = useState<Appointment[]>([])
   const [loading, setLoading] = useState(true)
@@ -47,12 +47,6 @@ export default function Appointments() {
       fetchAppointments()
     } catch (error: any) {
       toast.error(error.response?.data?.message || 'Failed to cancel appointment')
-    }
-  }
-
-  const handleComplete = async (appointment: Appointment) => {
-    if (user?.role === 'doctor') {
-      navigate('/doctor/dashboard')
     }
   }
 
@@ -120,18 +114,11 @@ export default function Appointments() {
     return aptDate >= today && apt.status === 'scheduled'
   })
 
-  const pastAppointments = appointments.filter(apt => {
-    const aptDate = new Date(apt.date)
-    const today = new Date()
-    today.setHours(0, 0, 0, 0)
-    return aptDate < today || apt.status === 'completed' || apt.status === 'cancelled'
-  })
-
   if (!user) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
-          <p className="text-gray-600 mb-4">Please login to view appointments</p>
+          <p className="text-slate-600 mb-4">Please login to view appointments</p>
           <Button onClick={() => navigate('/login')}>Login</Button>
         </div>
       </div>
@@ -139,12 +126,12 @@ export default function Appointments() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-slate-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Header */}
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">My Appointments</h1>
-          <p className="text-gray-600">
+          <h1 className="text-3xl font-bold text-slate-900 mb-2">My Appointments</h1>
+          <p className="text-slate-600">
             {user.role === 'doctor' 
               ? 'Manage your patient appointments' 
               : 'View and manage your appointments'}
@@ -157,8 +144,8 @@ export default function Appointments() {
             <CardContent>
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-gray-600">Total Appointments</p>
-                  <p className="text-2xl font-bold text-gray-900">{appointments.length}</p>
+                  <p className="text-sm text-slate-600">Total Appointments</p>
+                  <p className="text-2xl font-bold text-slate-900">{appointments.length}</p>
                 </div>
                 <Calendar className="h-8 w-8 text-primary-600 opacity-20" />
               </div>
@@ -168,7 +155,7 @@ export default function Appointments() {
             <CardContent>
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-gray-600">Upcoming</p>
+                  <p className="text-sm text-slate-600">Upcoming</p>
                   <p className="text-2xl font-bold text-primary-600">{upcomingAppointments.length}</p>
                 </div>
                 <Clock className="h-8 w-8 text-primary-600 opacity-20" />
@@ -179,7 +166,7 @@ export default function Appointments() {
             <CardContent>
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-gray-600">Completed</p>
+                  <p className="text-sm text-slate-600">Completed</p>
                   <p className="text-2xl font-bold text-green-600">
                     {appointments.filter(a => a.status === 'completed').length}
                   </p>
@@ -241,7 +228,7 @@ export default function Appointments() {
             {loading ? (
               <div className="py-12 text-center">
                 <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600 mx-auto"></div>
-                <p className="mt-4 text-gray-600">Loading appointments...</p>
+                <p className="mt-4 text-slate-600">Loading appointments...</p>
               </div>
             ) : filteredAppointments.length === 0 ? (
               <div className="py-12 text-center text-gray-500">
@@ -255,7 +242,7 @@ export default function Appointments() {
                   const doctor = typeof apt.doctor === 'object' ? apt.doctor : null
                   
                   return (
-                    <div key={apt._id} className="py-6 hover:bg-gray-50 transition-colors">
+                    <div key={apt._id} className="py-6 hover:bg-slate-50 transition-colors">
                       <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
                         <div className="flex-1">
                           <div className="flex items-center space-x-3 mb-2">
@@ -264,7 +251,7 @@ export default function Appointments() {
                             ) : (
                               <UserIcon className="h-5 w-5 text-primary-600" />
                             )}
-                            <h3 className="text-lg font-semibold text-gray-900">
+                            <h3 className="text-lg font-semibold text-slate-900">
                               {user.role === 'doctor' 
                                 ? (patient?.name || 'Unknown Patient')
                                 : (doctor?.name || 'Unknown Doctor')}
@@ -279,7 +266,7 @@ export default function Appointments() {
                             </span>
                           </div>
                           
-                          <div className="flex flex-wrap items-center gap-4 text-sm text-gray-600 ml-8">
+                          <div className="flex flex-wrap items-center gap-4 text-sm text-slate-600 ml-8">
                             <div className="flex items-center space-x-1">
                               <Calendar className="h-4 w-4" />
                               <span>{format(new Date(apt.date), 'MMM dd, yyyy')}</span>
@@ -298,15 +285,15 @@ export default function Appointments() {
 
                           {apt.symptoms && apt.symptoms.length > 0 && (
                             <div className="mt-2 ml-8">
-                              <p className="text-sm text-gray-600">
-                                <span className="font-medium">Symptoms:</span> {apt.symptoms.join(', ')}
+                              <p className="text-sm text-slate-600">
+                                <span className="font-medium">Symptoms:</span> {Array.isArray(apt.symptoms) ? apt.symptoms.join(', ') : apt.symptoms}
                               </p>
                             </div>
                           )}
 
                           {apt.notes && (
                             <div className="mt-2 ml-8">
-                              <p className="text-sm text-gray-600">
+                              <p className="text-sm text-slate-600">
                                 <span className="font-medium">Notes:</span> {apt.notes}
                               </p>
                             </div>
@@ -314,7 +301,7 @@ export default function Appointments() {
 
                           {apt.diagnosis && (
                             <div className="mt-2 ml-8">
-                              <p className="text-sm text-gray-600">
+                              <p className="text-sm text-slate-600">
                                 <span className="font-medium">Diagnosis:</span> {apt.diagnosis}
                               </p>
                             </div>
@@ -322,7 +309,7 @@ export default function Appointments() {
 
                           {apt.prescription && (
                             <div className="mt-2 ml-8">
-                              <p className="text-sm text-gray-600">
+                              <p className="text-sm text-slate-600">
                                 <span className="font-medium">Prescription:</span> {apt.prescription}
                               </p>
                             </div>
