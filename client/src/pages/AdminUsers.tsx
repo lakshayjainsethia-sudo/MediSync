@@ -7,7 +7,7 @@ import { adminApi } from '../utils/api'
 
 export default function AdminUsers() {
   const { user } = useAuth()
-  const { users, loading, refetchUsers, refetchAnalytics } = useAdminDashboard()
+  const { users, loading, hasMore, fetchMoreUsers, refetchUsers, refetchAnalytics } = useAdminDashboard()
   const [pendingActionIds, setPendingActionIds] = useState<Record<string, boolean>>({})
 
   if (!user || user.role !== 'admin') {
@@ -74,6 +74,9 @@ export default function AdminUsers() {
         <UserManagementPanel
           users={users}
           loading={loading.users}
+          loadingMore={loading.moreUsers}
+          hasMore={hasMore}
+          onLoadMore={fetchMoreUsers}
           pendingActionIds={pendingActionIds}
           onApprove={handleApprove}
           onDelete={handleDelete}

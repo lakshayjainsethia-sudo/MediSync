@@ -4,6 +4,7 @@ const { check } = require('express-validator');
 const { protect, authorize } = require('../middleware/auth');
 const Billing = require('../models/Billing');
 const Appointment = require('../models/Appointment');
+const { logAudit } = require('../utils/auditLogger');
 
 router.use(protect);
 
@@ -53,6 +54,7 @@ router.post(
 
       const billing = new Billing(billData);
       await billing.save();
+      await logAudit('BILL_GENERATED', req, billing._id, 'Billing', { totalAmount });
 
       await billing.populate('patient', 'name email phone');
       await billing.populate('doctor', 'name specialization');
@@ -203,6 +205,10 @@ router.patch('/:id/status', [
 
     if (!bill) {
       return res.status(404).json({ message: 'Bill not found' });
+    }
+
+    if (status === 'Paid') {
+      await logAudit('BILL_PAID', req, bill._id, 'Billing', { paymentMethod, totalAmount: bill.totalAmount });
     }
 
     res.json(bill);

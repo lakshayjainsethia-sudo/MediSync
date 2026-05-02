@@ -7,6 +7,9 @@ import { User } from '../../../types'
 interface UserManagementPanelProps {
   users: User[]
   loading: boolean
+  loadingMore?: boolean
+  hasMore?: boolean
+  onLoadMore?: () => void
   pendingActionIds?: Record<string, boolean>
   onApprove: (userId: string) => Promise<void> | void
   onDelete: (userId: string) => Promise<void> | void
@@ -26,6 +29,9 @@ const APPROVABLE_ROLES: User['role'][] = ['doctor', 'nurse', 'receptionist', 'ph
 export default function UserManagementPanel({
   users,
   loading,
+  loadingMore,
+  hasMore,
+  onLoadMore,
   pendingActionIds = {},
   onApprove,
   onDelete
@@ -116,7 +122,7 @@ export default function UserManagementPanel({
         ) : filteredUsers.length === 0 ? (
           <p className="text-center text-gray-500 py-10">No users match the current filters.</p>
         ) : (
-          <div className="overflow-x-auto">
+          <div className="overflow-x-auto space-y-4">
             <table className="min-w-full divide-y divide-gray-200">
               <thead className="bg-gray-50">
                 <tr>
@@ -177,6 +183,19 @@ export default function UserManagementPanel({
                 ))}
               </tbody>
             </table>
+            
+            {hasMore && (
+              <div className="flex justify-center mt-4 pt-4 border-t border-gray-100">
+                <Button 
+                  variant="outline" 
+                  onClick={onLoadMore} 
+                  isLoading={loadingMore}
+                  disabled={loadingMore}
+                >
+                  {loadingMore ? 'Loading...' : 'Load More Users'}
+                </Button>
+              </div>
+            )}
           </div>
         )}
       </CardContent>

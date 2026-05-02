@@ -7,14 +7,17 @@ import { useAdminDashboard } from '../features/admin/hooks/useAdminDashboard'
 import StatsOverview from '../features/admin/components/StatsOverview'
 import AppointmentsInsights from '../features/admin/components/AppointmentsInsights'
 import RevenueInsights from '../features/admin/components/RevenueInsights'
-import BloodInsights from '../features/admin/components/BloodInsights'
-import TopDoctorsTable from '../features/admin/components/TopDoctorsTable'
+
 import UserManagementPanel from '../features/admin/components/UserManagementPanel'
+import EquipmentManager from '../features/admin/components/EquipmentManager'
+
+type TabType = 'analytics' | 'users' | 'equipment'
 
 export default function AdminDashboard() {
   const { user } = useAuth()
   const { analytics, users, loading, error, refetchAnalytics, refetchUsers } = useAdminDashboard()
   const [pendingActionIds, setPendingActionIds] = useState<Record<string, boolean>>({})
+  const [activeTab, setActiveTab] = useState<TabType>('analytics')
 
   if (!user || user.role !== 'admin') {
     return (
@@ -88,7 +91,43 @@ export default function AdminDashboard() {
           </div>
         )}
 
-        {analytics ? (
+        <div className="border-b border-gray-200">
+          <nav className="-mb-px flex space-x-8">
+            <button
+              onClick={() => setActiveTab('analytics')}
+              className={`${
+                activeTab === 'analytics'
+                  ? 'border-primary-500 text-primary-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+              } whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors`}
+            >
+              Analytics & Insights
+            </button>
+            <button
+              onClick={() => setActiveTab('users')}
+              className={`${
+                activeTab === 'users'
+                  ? 'border-primary-500 text-primary-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+              } whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors`}
+            >
+              User Management
+            </button>
+            <button
+              onClick={() => setActiveTab('equipment')}
+              className={`${
+                activeTab === 'equipment'
+                  ? 'border-primary-500 text-primary-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+              } whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors`}
+            >
+              Equipment Tracking
+            </button>
+          </nav>
+        </div>
+
+        {activeTab === 'analytics' && (
+          analytics ? (
           <>
             <StatsOverview stats={analytics} loading={loading.analytics} onRefresh={refetchAnalytics} />
 
@@ -96,16 +135,14 @@ export default function AdminDashboard() {
               <AppointmentsInsights
                 statusData={analytics.appointmentsByStatus}
                 trendData={analytics.appointmentsByDay}
+                triageData={analytics.triageDistribution}
               />
               <RevenueInsights
                 trendData={analytics.revenueTrend}
                 breakdownData={analytics.revenueBreakdown}
                 userDistribution={analytics.userDistribution}
               />
-              <BloodInsights data={analytics.bloodLevels} />
             </div>
-
-            <TopDoctorsTable doctors={analytics.topDoctors} />
           </>
         ) : (
           <Card className="p-6">
@@ -113,15 +150,21 @@ export default function AdminDashboard() {
               We couldn't load analytics data. Please try refreshing the dashboard.
             </p>
           </Card>
+        ))}
+
+        {activeTab === 'users' && (
+          <UserManagementPanel
+            users={users}
+            loading={loading.users}
+            pendingActionIds={pendingActionIds}
+            onApprove={handleApproveUser}
+            onDelete={handleDeleteUser}
+          />
         )}
 
-        <UserManagementPanel
-          users={users}
-          loading={loading.users}
-          pendingActionIds={pendingActionIds}
-          onApprove={handleApproveUser}
-          onDelete={handleDeleteUser}
-        />
+        {activeTab === 'equipment' && (
+          <EquipmentManager />
+        )}
       </div>
     </div>
   )

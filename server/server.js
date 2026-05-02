@@ -9,10 +9,12 @@
   const app = express();
 
   // Middleware
-  app.use(cors({
-    origin: 'http://localhost:5173',
+  const corsOptions = {
+    origin: ['http://localhost:5173', 'http://localhost:5174', 'http://localhost:5175', 'http://localhost:5176', 'http://127.0.0.1:5173'],
     credentials: true
-  }));
+  };
+  
+  app.use(cors(corsOptions));
   app.use(express.json());
   app.use(cookieParser());
   app.use(morgan('dev'));
@@ -40,6 +42,8 @@
   app.use('/api/billing', require('./routes/billing'));
   app.use('/api/notifications', require('./routes/notifications'));
   app.use('/api/ai', aiRoutes);
+  app.use('/api/equipment', require('./routes/equipment'));
+  app.use('/api/pharmacist', require('./routes/pharmacist'));
 
   // Error handling middleware
   app.use((err, req, res, next) => {
@@ -52,20 +56,40 @@
 
   const server = http.createServer(app);
   const io = new Server(server, {
-    cors: {
-      origin: 'http://localhost:5173',
-      credentials: true
-    }
+    cors: corsOptions
   });
 
-  app.set('io', io);
+  const cookie = require('cookie');
+  const jwt = require('jsonwebtoken');
+
+  io.use((socket, next) => {
+    if (socket.request.headers.cookie) {
+      const cookies = cookie.parse(socket.request.headers.cookie);
+      const token = cookies.token;
+      if (token) {
+        jwt.verify(token, process.env.JWT_SECRET, (err, decoded) => {
+          if (!err && decoded && decoded.id) {
+            socket.user = decoded;
+          }
+          next();
+        });
+        return;
+      }
+    }
+    next();
+  });
 
   io.on('connection', (socket) => {
-    console.log('A client connected via Socket.io', socket.id);
+    if (socket.user && socket.user.role) {
+      const room = `${socket.user.role}s`; // e.g., 'doctors', 'receptionists'
+      socket.join(room);
+    }
     socket.on('disconnect', () => {
       console.log('Client disconnected', socket.id);
     });
   });
+
+  app.set('io', io);
 
   // Database connection
   const PORT = process.env.PORT || 5000;

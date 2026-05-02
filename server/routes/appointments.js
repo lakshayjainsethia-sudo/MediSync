@@ -5,6 +5,8 @@ const { protect, authorize } = require('../middleware/auth');
 const Appointment = require('../models/Appointment');
 const User = require('../models/User');
 const aiService = require('../services/aiService');
+const applyRoleProjection = require('../middleware/applyRoleProjection');
+const { logAudit } = require('../utils/auditLogger');
 
 // @route   POST /api/appointments
 // @desc    Create a new appointment
@@ -49,21 +51,19 @@ router.post(
       }
       
       // AI Triage Integration
-      let aiPriority = 'Normal';
-      let aiSuggestedDept = '';
-      let aiConfidence = 50;
-      let aiReasoning = '';
-      let aiRedFlags = [];
+      let aiTriageData = {
+        severity: 5,
+        urgency_score: 5,
+        triage_tag: 'ORANGE',
+        triage_reason: 'Manual review required'
+      };
       
       if (symptoms) {
         const symptomsText = Array.isArray(symptoms) ? symptoms.join(', ') : symptoms;
-        const triageResult = await aiService.analyzeSymptoms(symptomsText);
-        aiPriority = triageResult.aiPriority;
-        aiSuggestedDept = triageResult.aiSuggestedDept;
-        aiConfidence = triageResult.aiConfidence;
-        aiReasoning = triageResult.aiReasoning;
-        aiRedFlags = triageResult.aiRedFlags;
+        aiTriageData = await aiService.analyzeSymptoms(symptomsText);
       }
+      
+      const weightedScore = (aiTriageData.severity * 0.7) + (aiTriageData.urgency_score * 0.3);
       
       // Create new appointment
       const appointment = new Appointment({
@@ -75,31 +75,35 @@ router.post(
         symptoms,
         notes: notes || '',
         status: 'scheduled',
-        priority: priority || (aiPriority === 'High' ? 1 : 5),
-        aiPriority,
-        aiSuggestedDept,
-        aiConfidence,
-        aiReasoning,
-        aiRedFlags
+        priority: priority || (aiTriageData.triage_tag === 'RED' ? 1 : 5),
+        severity: aiTriageData.severity,
+        urgency_score: aiTriageData.urgency_score,
+        triage_tag: aiTriageData.triage_tag,
+        triage_reason: aiTriageData.triage_reason,
+        weightedScore
       });
       
       await appointment.save();
+      
+      await logAudit('APPOINTMENT_CREATED', req, appointment._id, 'Appointment');
+      if (aiTriageData) {
+        await logAudit('TRIAGE_ASSESSED', req, appointment._id, 'Appointment', { triage_tag: aiTriageData.triage_tag, weightedScore });
+      }
       
       // Populate doctor and patient details
       await appointment.populate('doctor', 'name specialization');
       await appointment.populate('patient', 'name email');
       
       // Real-Time Socket.io Alert if priority is HIGH
-      if (aiPriority === 'High') {
+      if (aiTriageData.triage_tag === 'RED') {
         const io = req.app.get('io');
         if (io) {
-          io.emit('triage_alert_high', {
+          io.to('doctors').emit('red_triage_alert', {
             appointmentId: appointment._id,
             patientName: appointment.patient.name,
-            aiReasoning,
-            aiRedFlags,
-            date,
-            startTime
+            triage_reason: aiTriageData.triage_reason,
+            weightedScore,
+            createdAt: appointment.createdAt
           });
         }
       }
@@ -112,18 +116,27 @@ router.post(
   }
 );
 
+const { z } = require('zod');
+
 // @route   GET /api/appointments
 // @desc    Get all appointments (Admin, Receptionist, Pharmacist, Doctor)
 // @access  Private
 router.get(
   '/',
-  [protect, authorize('admin', 'receptionist', 'pharmacist', 'doctor')],
+  [protect, authorize('admin', 'receptionist', 'pharmacist', 'doctor'), applyRoleProjection],
   async (req, res) => {
     try {
-      const appointments = await Appointment.find()
+      let query = {};
+      if (req.user.role === 'doctor') {
+         query.status = { $in: ['scheduled', 'Confirmed', 'Active'] };
+         query.doctor = req.user.id;
+      }
+
+      const appointments = await Appointment.find(query)
+        .select(req.fieldProjection)
         .populate('doctor', 'name specialization')
         .populate('patient', 'name email phone')
-        .sort({ date: 1, startTime: 1 });
+        .sort({ riskOverride: -1, weightedScore: -1, createdAt: 1 });
         
       res.json(appointments);
     } catch (err) {
@@ -136,18 +149,20 @@ router.get(
 // @route   GET /api/appointments/me
 // @desc    Get current user's appointments
 // @access  Private
-router.get('/me', protect, async (req, res) => {
+router.get('/me', protect, applyRoleProjection, async (req, res) => {
   try {
     let appointments;
     
     if (req.user.role === 'patient') {
       appointments = await Appointment.find({ patient: req.user.id })
+        .select(req.fieldProjection)
         .populate('doctor', 'name specialization')
         .sort({ priority: 1, date: -1, startTime: -1 }); // Priority 1 and 2 move to the top
-    } else if (req.user.role === 'doctor') {
+    } else if (req.user.role === 'doctor' || req.user.role === 'Doctor') {
       appointments = await Appointment.find({ doctor: req.user.id })
+        .select(req.fieldProjection)
         .populate('patient', 'name email phone')
-        .sort({ priority: 1, date: 1, startTime: 1 }); // Priority 1 and 2 move to the top
+        .sort({ riskOverride: -1, weightedScore: -1, createdAt: 1 }); 
     } else {
       return res.status(400).json({ message: 'Invalid role' });
     }
@@ -158,85 +173,6 @@ router.get('/me', protect, async (req, res) => {
     res.status(500).send('Server Error');
   }
 });
-
-// @route   PUT /api/appointments/:id/cancel
-// @desc    Cancel an appointment
-// @access  Private
-router.put('/:id/cancel', protect, async (req, res) => {
-  try {
-    const appointment = await Appointment.findById(req.params.id);
-    
-    if (!appointment) {
-      return res.status(404).json({ message: 'Appointment not found' });
-    }
-    
-    // Check if the user is authorized to cancel this appointment
-    if (appointment.patient.toString() !== req.user.id && 
-        appointment.doctor.toString() !== req.user.id) {
-      return res.status(401).json({ message: 'Not authorized to cancel this appointment' });
-    }
-    
-    // Check if appointment can be cancelled (e.g., not in the past)
-    const appointmentDateTime = new Date(
-      `${appointment.date.toISOString().split('T')[0]}T${appointment.startTime}`
-    );
-    
-    if (appointmentDateTime < new Date()) {
-      return res.status(400).json({ message: 'Cannot cancel past appointments' });
-    }
-    
-    // Update appointment status
-    appointment.status = 'cancelled';
-    await appointment.save();
-    
-    res.json({ message: 'Appointment cancelled successfully' });
-  } catch (err) {
-    console.error(err.message);
-    if (err.kind === 'ObjectId') {
-      return res.status(404).json({ message: 'Appointment not found' });
-    }
-    res.status(500).send('Server Error');
-  }
-});
-
-// @route   PUT /api/appointments/:id/complete
-// @desc    Mark appointment as completed (Doctor only)
-// @access  Private
-router.put(
-  '/:id/complete',
-  [protect, authorize('doctor')],
-  async (req, res) => {
-    try {
-      const { diagnosis, prescription } = req.body;
-      
-      const appointment = await Appointment.findById(req.params.id);
-      
-      if (!appointment) {
-        return res.status(404).json({ message: 'Appointment not found' });
-      }
-      
-      // Check if the doctor owns this appointment
-      if (appointment.doctor.toString() !== req.user.id) {
-        return res.status(401).json({ message: 'Not authorized' });
-      }
-      
-      // Update appointment
-      appointment.status = 'completed';
-      appointment.diagnosis = diagnosis || '';
-      appointment.prescription = prescription || '';
-      
-      await appointment.save();
-      
-      res.json(appointment);
-    } catch (err) {
-      console.error(err.message);
-      if (err.kind === 'ObjectId') {
-        return res.status(404).json({ message: 'Appointment not found' });
-      }
-      res.status(500).send('Server Error');
-    }
-  }
-);
 
 // @route   GET /api/appointments/available-slots
 // @desc    Get available time slots for a doctor on a specific date
@@ -300,6 +236,225 @@ router.get('/available-slots', async (req, res) => {
   }
 });
 
+// @route   GET /api/appointments/:id
+// @desc    Get single appointment
+// @access  Private
+router.get(
+  '/:id',
+  [protect, applyRoleProjection],
+  async (req, res) => {
+    try {
+      const appointment = await Appointment.findById(req.params.id)
+        .select(req.fieldProjection)
+        .populate('doctor', 'name specialization')
+        .populate('patient', 'name email phone');
+        
+      if (!appointment) {
+        return res.status(404).json({ message: 'Appointment not found' });
+      }
+      
+      res.json(appointment);
+    } catch (err) {
+      console.error(err.message);
+      if (err.kind === 'ObjectId') {
+        return res.status(404).json({ message: 'Appointment not found' });
+      }
+      res.status(500).send('Server Error');
+    }
+  }
+);
+
+
+
+// @route   PUT /api/appointments/:id/complete-review
+// @desc    Receptionist finalizes the appointment and generates invoice
+// @access  Private (Receptionist)
+router.put(
+  '/:id/complete-review',
+  [protect, authorize('receptionist', 'admin')],
+  async (req, res) => {
+    try {
+      // Zod Validation: strict() ensures no extra fields like clinicalNotes are allowed
+      const reviewSchema = z.object({
+        status: z.literal('completed'),
+        billingSummary: z.string().optional()
+      }).strict(); 
+
+      const validatedData = reviewSchema.parse(req.body);
+
+      const appointment = await Appointment.findById(req.params.id);
+      if (!appointment) return res.status(404).json({ message: 'Appointment not found' });
+      if (appointment.status !== 'Review_Required') return res.status(400).json({ message: 'Appointment does not require review' });
+
+      appointment.status = validatedData.status;
+      if (validatedData.billingSummary !== undefined) {
+         appointment.billingSummary = validatedData.billingSummary;
+      }
+      
+      await appointment.save();
+      res.json(appointment);
+    } catch (err) {
+      if (err instanceof z.ZodError) {
+        return res.status(403).json({ message: 'Validation failed: Protected clinical fields cannot be modified.', errors: err.errors });
+      }
+      console.error(err.message);
+      res.status(500).send('Server Error');
+    }
+  }
+);
+
+// @route   PUT /api/appointments/:id/cancel
+// @desc    Cancel an appointment
+// @access  Private
+router.put('/:id/cancel', protect, async (req, res) => {
+  try {
+    const appointment = await Appointment.findById(req.params.id);
+    
+    if (!appointment) {
+      return res.status(404).json({ message: 'Appointment not found' });
+    }
+    
+    // Check if the user is authorized to cancel this appointment
+    if (appointment.patient.toString() !== req.user.id && 
+        appointment.doctor.toString() !== req.user.id) {
+      return res.status(401).json({ message: 'Not authorized to cancel this appointment' });
+    }
+    
+    // Check if appointment can be cancelled (e.g., not in the past)
+    const appointmentDateTime = new Date(
+      `${appointment.date.toISOString().split('T')[0]}T${appointment.startTime}`
+    );
+    
+    if (appointmentDateTime < new Date()) {
+      return res.status(400).json({ message: 'Cannot cancel past appointments' });
+    }
+    
+    // Update appointment status
+    appointment.status = 'cancelled';
+    await appointment.save();
+    
+    res.json({ message: 'Appointment cancelled successfully' });
+  } catch (err) {
+    console.error(err.message);
+    if (err.kind === 'ObjectId') {
+      return res.status(404).json({ message: 'Appointment not found' });
+    }
+    res.status(500).send('Server Error');
+  }
+});
+
+// @route   PATCH /api/appointments/:id/complete
+// @desc    Mark appointment as completed and hand off to receptionist
+// @access  Private (Doctor only)
+router.patch(
+  '/:id/complete',
+  [protect, authorize('doctor')],
+  async (req, res) => {
+    try {
+      const appointment = await Appointment.findById(req.params.id);
+      
+      if (!appointment) {
+        throw new Error('Appointment not found');
+      }
+      
+      if (appointment.status !== 'Active' && appointment.status !== 'Confirmed' && appointment.status !== 'scheduled') {
+        throw new Error('Invalid appointment status for completion');
+      }
+
+      if (appointment.doctor.toString() !== req.user.id) {
+        throw new Error('Not authorized');
+      }
+      
+      const prevStatus = appointment.status;
+      appointment.status = 'Billing_Pending';
+      appointment.prescription = req.body.prescription || '';
+      appointment.completedAt = Date.now();
+      appointment.completedBy = req.user.id;
+      
+      await appointment.save();
+
+      // Audit Log and Socket
+      await logAudit('CONSULTATION_COMPLETED', req, appointment._id, 'Appointment', { from: prevStatus, to: 'Billing_Pending' });
+      
+      const io = req.app.get('io');
+      if (io) {
+        io.to('receptionists').emit('handoff_received', {
+          appointmentId: appointment._id,
+          patientName: appointment.patient.name,
+          doctorName: req.user.name,
+          prescription: req.body.prescription
+        });
+        if (req.body.prescription && req.body.prescription.trim().length > 0) {
+          io.to('pharmacists').emit('new_prescription', {
+            appointmentId: appointment._id,
+            patientName: appointment.patient.name,
+            doctorName: req.user.name,
+            prescription: req.body.prescription
+          });
+        }
+      }
+
+      res.json(appointment);
+    } catch (err) {
+      console.error(err.message);
+      if (err.message === 'Appointment not found') return res.status(404).json({ message: err.message });
+      if (err.message === 'Not authorized') return res.status(401).json({ message: err.message });
+      if (err.message === 'Invalid appointment status for completion') return res.status(400).json({ message: err.message });
+      res.status(500).send('Server Error');
+    }
+  }
+);
+
+const mongoose = require('mongoose');
+
+// @route   PUT /api/appointments/:id/end-consultation
+// @desc    End consultation and require review
+// @access  Private
+router.put(
+  '/:id/end-consultation',
+  [protect, authorize('doctor')],
+  async (req, res) => {
+    try {
+      const { clinicalNotes, billingSummary, diagnosis, prescription } = req.body;
+      const appointment = await Appointment.findById(req.params.id).populate('patient', 'name');
+      
+      if (!appointment) {
+        throw new Error('Appointment not found');
+      }
+      if (appointment.doctor.toString() !== req.user.id) {
+        throw new Error('Not authorized');
+      }
+
+      appointment.status = 'completed';
+      appointment.clinicalNotes = clinicalNotes || '';
+      appointment.billingSummary = billingSummary || '';
+      appointment.diagnosis = diagnosis || '';
+      appointment.prescription = prescription || '';
+      
+      await appointment.save();
+      
+      const io = req.app.get('io');
+      if (io && prescription && prescription.trim().length > 0) {
+        io.to('pharmacists').emit('new_prescription', {
+          appointmentId: appointment._id,
+          patientName: appointment.patient && appointment.patient.name ? appointment.patient.name : 'Unknown Patient',
+          doctorName: req.user.name,
+          prescription
+        });
+      }
+      
+      res.json(appointment);
+    } catch (err) {
+      console.error(err.message);
+      if (err.message === 'Appointment not found') return res.status(404).json({ message: err.message });
+      if (err.message === 'Not authorized') return res.status(401).json({ message: err.message });
+      res.status(500).send('Server Error');
+    }
+  }
+);
+
+
+
 // @route   PATCH /api/appointments/:id/risk-override
 // @desc    Manually override and flag appointment risk
 // @access  Private (Receptionist, Admin)
@@ -329,20 +484,17 @@ router.patch(
       }
 
       await appointment.save();
+      await logAudit('RISK_OVERRIDE', req, appointment._id, 'Appointment', { riskOverride, riskOverrideReason });
 
       // Emit Socket.io alert
-      if (riskOverride && appointment.aiPriority !== 'High') {
+      if (riskOverride) {
         const io = req.app.get('io');
         if (io) {
-          io.emit('manual_triage_alert', {
+          io.emit('emergency_update', {
             appointmentId: appointment._id,
             patientName: appointment.patient.name,
-            aiReasoning: appointment.aiReasoning,
-            aiRedFlags: appointment.aiRedFlags,
-            date: appointment.date,
-            startTime: appointment.startTime,
-            flag: 'MANUAL_OVERRIDE',
-            reason: appointment.riskOverrideReason
+            reason: appointment.riskOverrideReason,
+            aiPriorityScore: appointment.aiPriorityScore
           });
         }
       }

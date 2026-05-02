@@ -8,6 +8,7 @@ import Login from './pages/Login'
 import Register from './pages/Register'
 import PatientDashboard from './pages/PatientDashboard'
 import DoctorDashboard from './pages/DoctorDashboard'
+import ConsultationView from './pages/doctor/ConsultationView'
 import StaffDashboard from './pages/StaffDashboard'
 import AdminDashboard from './pages/AdminDashboard'
 import AdminUsers from './pages/AdminUsers'
@@ -22,8 +23,9 @@ import Doctors from './pages/Doctors'
 import Appointments from './pages/Appointments'
 import Lobby from './pages/Lobby'
 import TriageQueue from './pages/TriageQueue'
+import PharmacistDashboard from './pages/pharmacist/PharmacistDashboard'
 
-const STAFF_ROLES = ['nurse', 'receptionist', 'pharmacist'] as const
+const STAFF_ROLES = ['nurse', 'receptionist'] as const
 
 interface PrivateRouteProps {
   children: React.ReactNode
@@ -77,6 +79,14 @@ function AppRoutes() {
           </PrivateRoute>
         }
       />
+      <Route
+        path="/doctor/consultation/:appointmentId"
+        element={
+          <PrivateRoute allowedRoles={['doctor']}>
+            <ConsultationView />
+          </PrivateRoute>
+        }
+      />
       {STAFF_ROLES.map(role => (
         <Route
           key={role}
@@ -88,6 +98,14 @@ function AppRoutes() {
           }
         />
       ))}
+      <Route
+        path="/pharmacist/dashboard"
+        element={
+          <PrivateRoute allowedRoles={['pharmacist']}>
+            <PharmacistDashboard />
+          </PrivateRoute>
+        }
+      />
       <Route
         path="/admin/dashboard"
         element={
@@ -177,7 +195,7 @@ function App() {
   return (
     <AuthProvider>
       <NotificationProvider>
-        <Router>
+        <Router future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
           <div className="min-h-screen bg-gray-50">
             <Header />
             <AppRoutes />

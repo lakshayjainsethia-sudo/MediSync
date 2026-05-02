@@ -25,10 +25,18 @@ const appointmentSchema = new mongoose.Schema({
   },
   status: {
     type: String,
-    enum: ['scheduled', 'completed', 'cancelled', 'rescheduled'],
+    enum: ['scheduled', 'completed', 'cancelled', 'rescheduled', 'Review_Required', 'Billing_Pending', 'Confirmed', 'Active'],
     default: 'scheduled'
   },
   notes: {
+    type: String,
+    default: ''
+  },
+  clinicalNotes: {
+    type: String,
+    default: ''
+  },
+  billingSummary: {
     type: String,
     default: ''
   },
@@ -40,10 +48,22 @@ const appointmentSchema = new mongoose.Schema({
       return v;
     }
   },
+  // --- New fields for Section 1 AI Triage Engine Upgrade ---
+  severity: { type: Number, min: 1, max: 10 },
+  urgency_score: { type: Number, min: 1, max: 10 },
+  triage_tag: { type: String, enum: ['RED', 'ORANGE', 'GREEN'] },
+  weightedScore: { type: Number },
+  // --- Legacy fields preserved for backward compatibility ---
   aiPriority: {
     type: String,
     enum: ['Low', 'Medium', 'High', 'Normal'],
     default: 'Normal'
+  },
+  aiPriorityScore: {
+    type: Number,
+    min: 1,
+    max: 10,
+    default: 5
   },
   aiSuggestedDept: {
     type: String
@@ -70,6 +90,10 @@ const appointmentSchema = new mongoose.Schema({
     type: String,
     trim: true
   },
+  triage_reason: {
+    type: String,
+    trim: true
+  },
   aiRedFlags: [{
     type: String
   }],
@@ -88,7 +112,10 @@ const appointmentSchema = new mongoose.Schema({
   },
   riskOverrideAt: { 
     type: Date 
-  }
+  },
+  dispensed: { type: Boolean, default: false },
+  dispensedAt: { type: Date },
+  dispensedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' }
 }, { 
   timestamps: true,
   toJSON: { getters: true, virtuals: true },

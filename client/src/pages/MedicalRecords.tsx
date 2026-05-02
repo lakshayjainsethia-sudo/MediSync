@@ -108,13 +108,13 @@ export default function MedicalRecords() {
                             <Calendar className="h-4 w-4 mr-1" />
                             {format(new Date(record.visitDate), 'MMM dd, yyyy')}
                           </div>
-                          {user?.role === 'patient' && doctor && (
+                          {user?.role !== 'patient' && doctor && (
                             <div className="flex items-center">
                               <User className="h-4 w-4 mr-1" />
                               Dr. {doctor.name}
                             </div>
                           )}
-                          {user?.role === 'doctor' && patient && (
+                          {user?.role !== 'doctor' && patient && (
                             <div className="flex items-center">
                               <User className="h-4 w-4 mr-1" />
                               {patient.name}

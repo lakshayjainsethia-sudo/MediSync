@@ -7,8 +7,7 @@ import {
   LogOut, 
   Menu, 
   X,
-  Stethoscope,
-  Search
+  Stethoscope
 } from 'lucide-react'
 import { notificationsApi } from '../../utils/api'
 import { Notification } from '../../types'
@@ -116,12 +115,14 @@ export default function Header() {
                   Appointments
                 </Link>
               )}
-              <Link
-                to="/billing"
-                className="text-gray-700 hover:text-primary-600 transition-colors"
-              >
-                Billing
-              </Link>
+              {['admin', 'receptionist'].includes(user.role) && (
+                <Link
+                  to="/billing"
+                  className="text-gray-700 hover:text-primary-600 transition-colors"
+                >
+                  Billing
+                </Link>
+              )}
               {user.role === 'admin' && (
                 <>
                   <Link
@@ -327,13 +328,15 @@ export default function Header() {
                   Appointments
                 </Link>
               )}
-              <Link
-                to="/billing"
-                className="px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg"
-                onClick={() => setMobileMenuOpen(false)}
-              >
-                Billing
-              </Link>
+              {['admin', 'receptionist'].includes(user.role) && (
+                <Link
+                  to="/billing"
+                  className="px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg"
+                  onClick={() => setMobileMenuOpen(false)}
+                >
+                  Billing
+                </Link>
+              )}
               {user.role === 'admin' && (
                 <>
                   <Link

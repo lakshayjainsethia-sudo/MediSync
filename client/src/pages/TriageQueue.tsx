@@ -36,19 +36,14 @@ export default function TriageQueue() {
       // Filter out completed/cancelled, show only scheduled
       const active = response.data.filter((apt: Appointment) => apt.status === 'scheduled')
       
-      // Sort: Emergency (aiPriority High) first (sorted by aiConfidence descending), then date/time
-      // Sort: Manual Override first, then Emergency (aiPriority High), then by date/timestamp
       active.sort((a: any, b: any) => {
         if (a.riskOverride && !b.riskOverride) return -1;
         if (!a.riskOverride && b.riskOverride) return 1;
 
-        if (a.aiPriority === 'High' && b.aiPriority !== 'High') return -1;
-        if (a.aiPriority !== 'High' && b.aiPriority === 'High') return 1;
-        if (a.aiPriority === 'High' && b.aiPriority === 'High') {
-           const confA = a.aiConfidence || 0;
-           const confB = b.aiConfidence || 0;
-           if (confA !== confB) return confB - confA; // Descending
-        }
+        const scoreA = a.aiPriorityScore || 5;
+        const scoreB = b.aiPriorityScore || 5;
+        if (scoreA !== scoreB) return scoreB - scoreA; // Descending
+
         const dateA = new Date(`${a.date.split('T')[0]}T${a.startTime}`).getTime();
         const dateB = new Date(`${b.date.split('T')[0]}T${b.startTime}`).getTime();
         return dateA - dateB;
@@ -82,8 +77,9 @@ export default function TriageQueue() {
       updated.sort((a: any, b: any) => {
         if (a.riskOverride && !b.riskOverride) return -1;
         if (!a.riskOverride && b.riskOverride) return 1;
-        if (a.aiPriority === 'High' && b.aiPriority !== 'High') return -1;
-        if (a.aiPriority !== 'High' && b.aiPriority === 'High') return 1;
+        const scoreA = a.aiPriorityScore || 5;
+        const scoreB = b.aiPriorityScore || 5;
+        if (scoreA !== scoreB) return scoreB - scoreA;
         const dateA = new Date(`${a.date.split('T')[0]}T${a.startTime}`).getTime();
         const dateB = new Date(`${b.date.split('T')[0]}T${b.startTime}`).getTime();
         return dateA - dateB;
@@ -97,7 +93,7 @@ export default function TriageQueue() {
         riskOverride,
         riskOverrideReason
       }, { withCredentials: true });
-      toast.success(riskOverride ? 'Manually flagged as High Risk' : 'Flag removed');
+      toast.success(riskOverride ? 'Emergency Confirmed. Doctor Notified.' : 'Emergency Flag Removed');
     } catch (err) {
       // 4. Rollback on failure
       console.error('Risk override failed', err);
@@ -211,11 +207,6 @@ function TriageCard({ apt, isHighPriority = false, onOverride }: { apt: any, isH
       ? 'bg-red-50/20 hover:bg-red-50/60 border-l-4 border-l-red-600' 
       : 'hover:bg-slate-50 border-l-4 border-l-transparent';
 
-  const badgeStyle = apt.riskOverride 
-    ? 'bg-purple-100 border-purple-200 text-purple-800' 
-    : isHighPriority 
-      ? 'bg-red-100 border-red-200 text-red-800' 
-      : 'bg-slate-100 border-slate-200 text-slate-700';
 
   return (
     <div className={`p-5 transition flex flex-col gap-3 relative ${cardStyle}`}>
@@ -231,8 +222,11 @@ function TriageCard({ apt, isHighPriority = false, onOverride }: { apt: any, isH
                  Route: {apt.aiSuggestedDept}
                </span>
             )}
-            <span className={`px-2 py-0.5 rounded text-xs font-bold border ${isHighPriority ? 'bg-red-100 border-red-200 text-red-800' : 'bg-slate-100 border-slate-200 text-slate-700'}`}>
-               Confidence: {confidence}%
+            <span 
+              className={`px-2 py-0.5 rounded text-xs font-bold border cursor-help ${isHighPriority ? 'bg-red-100 border-red-200 text-red-800' : 'bg-slate-100 border-slate-200 text-slate-700'}`}
+              title={apt.triage_reason || 'AI assessed priority score based on symptoms.'}
+            >
+               Score: {apt.aiPriorityScore || 5}/10
             </span>
           </div>
           
@@ -280,7 +274,7 @@ function TriageCard({ apt, isHighPriority = false, onOverride }: { apt: any, isH
                 onClick={() => setShowOverrideForm(true)}
                 className="flex items-center justify-end gap-1 text-xs font-semibold text-purple-600 hover:text-purple-800 focus:outline-none"
               >
-                <Flag className="h-3 w-3" /> Flag High Risk
+                <Flag className="h-3 w-3" /> Confirm Emergency
               </button>
             )}
             
@@ -311,7 +305,7 @@ function TriageCard({ apt, isHighPriority = false, onOverride }: { apt: any, isH
             className="w-full text-sm border-purple-300 rounded p-2 focus:ring-purple-500 focus:border-purple-500" 
             rows={2} 
             maxLength={150}
-            placeholder="Reason for flagging..."
+            placeholder="Reason for confirming emergency..."
             value={overrideReason}
             onChange={(e) => setOverrideReason(e.target.value)}
           />
@@ -325,7 +319,7 @@ function TriageCard({ apt, isHighPriority = false, onOverride }: { apt: any, isH
               disabled={!overrideReason.trim()}
               className="px-3 py-1 text-xs font-medium text-white bg-purple-600 hover:bg-purple-700 rounded disabled:opacity-50"
             >
-              Confirm Flag
+              Confirm Emergency
             </button>
           </div>
         </div>

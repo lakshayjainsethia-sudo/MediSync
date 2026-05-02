@@ -22,6 +22,11 @@ const medicineSchema = new mongoose.Schema({
     required: true,
     trim: true
   },
+  minimumThreshold: {
+    type: Number,
+    required: true,
+    default: 50
+  },
   expiryDate: {
     type: Date,
     required: true

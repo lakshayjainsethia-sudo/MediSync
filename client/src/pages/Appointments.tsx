@@ -26,7 +26,12 @@ export default function Appointments() {
   const fetchAppointments = async () => {
     try {
       setLoading(true)
-      const response = await appointmentsApi.getMine()
+      let response;
+      if (['admin', 'receptionist', 'pharmacist', 'nurse'].includes(user?.role || '')) {
+        response = await appointmentsApi.getAll()
+      } else {
+        response = await appointmentsApi.getMine()
+      }
       setAppointments(response.data)
     } catch (error: any) {
       console.error('Failed to fetch appointments:', error)

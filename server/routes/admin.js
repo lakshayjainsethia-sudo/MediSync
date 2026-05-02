@@ -154,17 +154,33 @@ router.delete('/doctors/:id', async (req, res) => {
 
 
 // @route   GET /api/admin/users
-// @desc    Get all users (patients and doctors)
+// @desc    Get all users (patients and doctors) with pagination
 // @access  Private (Admin only)
 router.get('/users', async (req, res) => {
   try {
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 50; // Default limit 50 for backward compatibility
+    const skip = (page - 1) * limit;
+
     const managedRoles = ['patient', 'doctor', 'nurse', 'receptionist', 'pharmacist'];
-    const users = await User.find({ 
-      role: { $in: managedRoles } 
-    }).select('-password -refreshToken')
-      .sort({ role: 1, name: 1 });
+    const query = { role: { $in: managedRoles } };
+
+    const users = await User.find(query)
+      .select('-password -refreshToken')
+      .sort({ role: 1, name: 1 })
+      .skip(skip)
+      .limit(limit);
     
-    res.json(users);
+    const total = await User.countDocuments(query);
+    const hasMore = skip + users.length < total;
+    
+    res.json({
+      users,
+      total,
+      hasMore,
+      page,
+      limit
+    });
   } catch (err) {
     console.error(err.message);
     res.status(500).send('Server Error');
@@ -206,6 +222,76 @@ router.delete('/users/:id', async (req, res) => {
 // ==========================================
 // ITERATION 4 - ADMIN ANALYTICS ROUTES
 // ==========================================
+
+// @route   GET /api/admin/analytics
+// @desc    Unified Aggregation Pipeline for Analytics Dashboard
+// @access  Private (Admin only)
+router.get('/analytics', async (req, res) => {
+  try {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(today.getDate() - 30);
+
+    const [
+      totalPatients,
+      totalDoctors,
+      totalAppointments,
+      todaysAppointmentsCount,
+      pendingApprovals,
+      revenueResult,
+      statusDist,
+      trendDist,
+      triageDist
+    ] = await Promise.all([
+      User.countDocuments({ role: 'patient' }),
+      User.countDocuments({ role: 'doctor', isApproved: true }),
+      Appointment.countDocuments(),
+      Appointment.countDocuments({ date: { $gte: today } }),
+      User.countDocuments({ role: { $in: ['doctor', 'nurse', 'receptionist', 'pharmacist'] }, isApproved: false }),
+      Billing.aggregate([
+        { $match: { status: 'Paid', createdAt: { $gte: thirtyDaysAgo } } },
+        { $group: { _id: null, total: { $sum: '$totalAmount' } } }
+      ]),
+      Appointment.aggregate([
+        { $group: { _id: '$status', count: { $sum: 1 } } }
+      ]),
+      Appointment.aggregate([
+        { $match: { createdAt: { $gte: thirtyDaysAgo } } },
+        {
+          $group: {
+            _id: {
+              $dateToString: { format: "%Y-%m-%d", date: "$createdAt", timezone: "Asia/Kolkata" }
+            },
+            count: { $sum: 1 }
+          }
+        },
+        { $sort: { _id: 1 } }
+      ]),
+      Appointment.aggregate([
+        { $group: { _id: { $ifNull: ['$aiPriority', 'Normal'] }, count: { $sum: 1 } } }
+      ])
+    ]);
+
+    const revenue = revenueResult.length > 0 ? revenueResult[0].total : 0;
+
+    res.json({
+      totalPatients,
+      totalDoctors,
+      totalAppointments,
+      todaysAppointments: todaysAppointmentsCount,
+      pendingApprovals,
+      revenue,
+      appointmentsByStatus: statusDist,
+      appointmentsByDay: trendDist,
+      triageDistribution: triageDist
+    });
+  } catch (err) {
+    console.error('Analytics Endpoint Error:', err.message);
+    res.status(500).json({ message: 'Server Error fetching analytics' });
+  }
+});
 
 // @route   GET /api/admin/dashboard-stats
 // @desc    Unified Aggregation Pipeline for Command Center Dashboard
@@ -396,6 +482,36 @@ router.get('/analytics/risk-distribution', async (req, res) => {
   } catch (err) {
     console.error('Risk Dist Error:', err.message);
     res.status(500).json({ message: 'Server Error fetching risk distribution' });
+  }
+});
+
+// @route   GET /api/admin/audit-logs
+// @desc    Get all audit logs with pagination and filters
+// @access  Private (Admin only)
+router.get('/audit-logs', async (req, res) => {
+  try {
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 25;
+    const skip = (page - 1) * limit;
+
+    let query = {};
+    if (req.query.role) query.role = req.query.role;
+    if (req.query.action) query.action = req.query.action;
+
+    const AuditLog = require('../models/AuditLog');
+    const logs = await AuditLog.find(query)
+      .populate('performedBy', 'name email role')
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limit);
+
+    const total = await AuditLog.countDocuments(query);
+    const hasMore = skip + logs.length < total;
+
+    res.json({ logs, total, hasMore, page, limit });
+  } catch (err) {
+    console.error(err.message);
+    res.status(500).json({ message: 'Server Error' });
   }
 });
 

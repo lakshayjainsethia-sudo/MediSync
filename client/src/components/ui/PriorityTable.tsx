@@ -1,4 +1,3 @@
-import React from 'react';
 import SkeletonLoader from './SkeletonLoader';
 import { Appointment } from '../../types';
 import { format } from 'date-fns';

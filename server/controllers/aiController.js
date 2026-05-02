@@ -210,10 +210,55 @@ const auditBilling = async (req, res) => {
   }
 };
 
+const Equipment = require('../models/Equipment');
+
+const analyzePrescription = async (req, res) => {
+  try {
+    const { prescription, patientAge, existingConditions } = req.body;
+    if (!prescription) {
+      return res.status(400).json({ message: "Prescription is required" });
+    }
+    const result = await aiService.analyzePrescription(prescription, patientAge, existingConditions);
+    
+    // Attempt audit log if appointmentId is present (optional)
+    if (req.body.appointmentId) {
+      const { logAudit } = require('../utils/auditLogger');
+      await logAudit('PRESCRIPTION_ANALYZED', req, req.body.appointmentId, 'Appointment', { overallSafe: result.overallSafe });
+    }
+
+    res.json(result);
+  } catch (error) {
+    console.error('Analyze prescription route error:', error);
+    res.status(500).json({ message: 'Server Error' });
+  }
+};
+
+const predictMaintenance = async (req, res) => {
+  try {
+    const equipment = await Equipment.findById(req.params.equipmentId);
+    if (!equipment) return res.status(404).json({ message: 'Equipment not found' });
+
+    const result = await aiService.predictMaintenance(equipment);
+
+    const { logAudit } = require('../utils/auditLogger');
+    await logAudit('MAINTENANCE_PREDICTED', req, equipment._id, 'Equipment', { 
+      urgency: result.urgency, 
+      predictedNextService: result.predictedNextService 
+    });
+
+    res.json(result);
+  } catch (error) {
+    console.error('Predict maintenance route error:', error);
+    res.status(500).json({ message: 'Server Error' });
+  }
+};
+
 module.exports = {
   getTriage,
   suggestSymptoms,
   recommendSlot,
   suggestBillingItems,
-  auditBilling
+  auditBilling,
+  analyzePrescription,
+  predictMaintenance
 };

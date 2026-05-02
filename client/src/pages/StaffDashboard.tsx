@@ -1,4 +1,4 @@
-import { ClipboardList, CalendarCheck2, FileText, ShieldCheck, Activity } from 'lucide-react'
+import { ClipboardList, CalendarCheck2, ShieldCheck, Activity } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import Card, { CardContent, CardHeader } from '../components/ui/Card'
 import StatCard from '../components/ui/StatCard'
@@ -27,12 +27,7 @@ const QUICK_ACTIONS = [
     icon: <CalendarCheck2 className="h-5 w-5 text-primary-600" />,
     href: '/appointments'
   },
-  {
-    title: 'Medical Records',
-    description: 'Reference the latest patient history and clinical notes.',
-    icon: <FileText className="h-5 w-5 text-primary-600" />,
-    href: '/medical-records'
-  },
+
   {
     title: 'Billing Overview',
     description: 'Keep tabs on outstanding invoices and payments.',
@@ -44,6 +39,7 @@ const QUICK_ACTIONS = [
 export default function StaffDashboard() {
   const { user } = useAuth()
   const navigate = useNavigate()
+
 
   if (!user) {
     return null
@@ -65,26 +61,15 @@ export default function StaffDashboard() {
           <p className="text-slate-600 max-w-2xl">{copy.description}</p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-1 gap-4">
           <StatCard
             title="System Access"
             value="Operational"
             subtitle="Core tools ready to use"
             icon={<ShieldCheck className="h-8 w-8 text-emerald-500 opacity-20" />}
           />
-          <StatCard
-            title="Upcoming Tasks"
-            value="Keep tracking"
-            subtitle="Appointments & updates pending rollout"
-            icon={<CalendarCheck2 className="h-8 w-8 text-blue-500 opacity-20" />}
-          />
-          <StatCard
-            title="Team Sync"
-            value="Collaborate"
-            subtitle="Coordinate with doctors & admin"
-            icon={<ClipboardList className="h-8 w-8 text-indigo-500 opacity-20" />}
-          />
         </div>
+
 
         <Card>
           <CardHeader

@@ -31,3 +31,15 @@ body {
 * {
   box-sizing: border-box;
 }
+
+/* AI Triage Emergency Pulse */
+.emergency-pulse {
+  border: 2px solid #ff0000 !important;
+  box-shadow: 0 0 0 0 rgba(255,0,0,0.7) !important;
+  animation: pulse-red 1.5s infinite !important;
+}
+@keyframes pulse-red {
+  0%   { transform:scale(0.98); box-shadow:0 0 0 0 rgba(255,0,0,0.7); }
+  70%  { transform:scale(1);    box-shadow:0 0 0 10px rgba(255,0,0,0); }
+  100% { transform:scale(0.98); box-shadow:0 0 0 0 rgba(255,0,0,0); }
+}

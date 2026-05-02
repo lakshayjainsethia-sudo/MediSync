@@ -40,4 +40,14 @@ router.post('/billing-suggest', authorize('receptionist', 'admin'), aiController
 // @access  Private (Receptionist, Admin)
 router.post('/billing-audit', authorize('receptionist', 'admin'), aiController.auditBilling);
 
+// @route   POST /api/ai/analyze-prescription
+// @desc    Analyze prescription
+// @access  Private (Doctor)
+router.post('/analyze-prescription', authorize('doctor', 'admin'), aiController.analyzePrescription);
+
+// @route   GET /api/ai/predict-maintenance/:equipmentId
+// @desc    Predict maintenance
+// @access  Private (Admin)
+router.get('/predict-maintenance/:equipmentId', authorize('admin'), aiController.predictMaintenance);
+
 module.exports = router;

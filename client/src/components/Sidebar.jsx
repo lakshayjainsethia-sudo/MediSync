@@ -17,8 +17,10 @@ import {
 const Sidebar = () => {
   const { user, logout } = useAuth();
 
+  const roleKey = user?.role ? user.role.toLowerCase() : 'admin';
+
   const navItems = {
-    Admin: [
+    admin: [
       { name: 'Dashboard', path: '/admin/dashboard', icon: HomeIcon },
       { name: 'Blood Bank', path: '/admin/blood-inventory', icon: HeartIcon },
       { name: 'Live Queue', path: '/live-queue', icon: QueueListIcon },
@@ -31,10 +33,14 @@ const Sidebar = () => {
       { name: 'Triage Queue', path: '/triage', icon: QueueListIcon },
       { name: 'Billing', path: '/billing', icon: CurrencyDollarIcon },
     ],
-    // Add Doctor and Patient arrays as needed...
+    doctor: [
+      { name: 'Clinical Dashboard', path: '/doctor/dashboard', icon: HomeIcon },
+      { name: 'Live Queue', path: '/live-queue', icon: QueueListIcon }
+    ],
+    // Add Patient arrays as needed...
   };
 
-  const linksToRender = navItems[user?.role || 'Admin'] || [];
+  const linksToRender = navItems[roleKey] || navItems.admin;
 
   return (
     // Deep Navy base with a slight glassmorphism effect

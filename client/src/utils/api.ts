@@ -74,6 +74,8 @@ export const appointmentsApi = {
   getMine: () => api.get('/appointments/me'),
   cancel: (id: string) => api.put(`/appointments/${id}/cancel`),
   complete: (id: string, data: { diagnosis?: string; prescription?: string }) => api.put(`/appointments/${id}/complete`, data),
+  endConsultation: (id: string, data: { diagnosis?: string; prescription?: string; clinicalNotes?: string; billingSummary?: string }) => api.put(`/appointments/${id}/end-consultation`, data),
+  completeReview: (id: string, data: { status: 'completed'; billingSummary?: string }) => api.put(`/appointments/${id}/complete-review`, data),
   getAvailableSlots: (doctorId: string, date: string) => api.get(`/appointments/available-slots?doctorId=${doctorId}&date=${date}`),
 }
 
@@ -112,12 +114,13 @@ export const notificationsApi = {
 }
 
 export const adminApi = {
+  getAnalytics: () => api.get('/admin/analytics'),
   getPendingDoctors: () => api.get('/admin/doctors/pending'),
   approveDoctor: (id: string) => api.put(`/admin/doctors/${id}/approve`),
   approveUser: (id: string) => api.put(`/admin/users/${id}/approve`),
   deleteDoctor: (id: string) => api.delete(`/admin/doctors/${id}`),
 
-  getAllUsers: () => api.get('/admin/users'),
+  getAllUsers: (page = 1, limit = 50) => api.get(`/admin/users?page=${page}&limit=${limit}`),
   deleteUser: (id: string) => api.delete(`/admin/users/${id}`),
 }
 
@@ -125,4 +128,27 @@ export const departmentsApi = {
   getAll: () => api.get('/departments'),
   getById: (id: string) => api.get(`/departments/${id}`),
   create: (data: any) => api.post('/departments', data),
+}
+
+export const equipmentApi = {
+  getAll: (params?: { unit?: string; status?: string; department?: string }) => api.get('/equipment', { params }),
+
+  getById: (id: string) => api.get(`/equipment/${id}`),
+  create: (data: any) => api.post('/equipment', data),
+  update: (id: string, data: any) => api.patch(`/equipment/${id}`, data),
+  addLog: (id: string, data: any) => api.post(`/equipment/${id}/maintenance-log`, data),
+}
+
+export const aiApi = {
+  predictMaintenance: (id: string) => api.get(`/ai/predict-maintenance/${id}`),
+  analyzePrescription: (data: any) => api.post('/ai/analyze-prescription', data),
+  suggestSymptoms: (query: string) => api.get(`/ai/symptom-suggest?q=${encodeURIComponent(query)}`)
+}
+
+export const pharmacistApi = {
+  getOverview: () => api.get('/pharmacist/overview'),
+  getPendingPrescriptions: () => api.get('/pharmacist/prescriptions/pending'),
+  dispensePrescription: (id: string, data: { medicinesToDispense: any[] }) => api.patch(`/pharmacist/prescriptions/${id}/dispense`, data),
+  getLowStockMedicines: (threshold?: number) => api.get('/pharmacist/medicines/low-stock', { params: { threshold } }),
+  searchMedicines: (q: string) => api.get(`/pharmacist/medicine/search?q=${encodeURIComponent(q)}`)
 }

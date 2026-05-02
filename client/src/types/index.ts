@@ -45,6 +45,16 @@ export interface Appointment {
   symptoms?: string[]
   diagnosis?: string
   prescription?: string
+  triage_tag?: 'RED' | 'ORANGE' | 'GREEN'
+  severity?: number
+  urgency_score?: number
+  weightedScore?: number
+  aiPriority?: string
+  aiConfidence?: number
+  aiReasoning?: string
+  aiRedFlags?: string[]
+  riskOverride?: boolean
+  pulse?: boolean
   createdAt?: string
   updatedAt?: string
 }
@@ -244,6 +254,10 @@ export interface DashboardStats {
     count: number
   }>
   appointmentsByDay: Array<{
+    _id: string
+    count: number
+  }>
+  triageDistribution?: Array<{
     _id: string
     count: number
   }>

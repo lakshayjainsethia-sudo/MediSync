@@ -85,6 +85,12 @@ router.get('/me', async (req, res) => {
         .populate('patient', 'name email phone')
         .populate('appointment', 'date startTime')
         .sort({ visitDate: -1 });
+    } else if (['admin', 'receptionist', 'pharmacist'].includes(req.user.role)) {
+      records = await MedicalRecord.find()
+        .populate('patient', 'name email phone')
+        .populate('doctor', 'name specialization')
+        .populate('appointment', 'date startTime')
+        .sort({ visitDate: -1 });
     } else {
       return res.status(400).json({ message: 'Invalid role' });
     }

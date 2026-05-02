@@ -24,8 +24,6 @@ services:
     build:
       context: ./intelligence-engine
       dockerfile: Dockerfile
-    ports:
-      - "8000:8000"
     environment:
       - MONGO_URI=${MONGO_URI:-mongodb://mongo:27017/medisync}
     depends_on:
@@ -42,6 +40,18 @@ services:
       - "5173:5173"
     environment:
       - VITE_API_BASE_URL=http://localhost:5000/api
+    depends_on:
+      - api-gateway
+    networks:
+      - medisync-network
+
+  # Nginx Reverse Proxy
+  nginx:
+    image: nginx:alpine
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
     depends_on:
       - api-gateway
     networks:

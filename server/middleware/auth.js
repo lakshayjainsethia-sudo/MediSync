@@ -104,7 +104,7 @@ const sendTokenResponse = (user, statusCode, res) => {
       case 'admin': return ['all'];
       case 'doctor': return ['read:patients', 'write:medical-records', 'read:appointments', 'write:appointments', 'read:billing'];
       case 'receptionist': return ['read:patients', 'read:appointments', 'write:appointments', 'read:billing', 'write:billing'];
-      case 'pharmacist': return ['read:patients', 'read:appointments', 'read:inventory', 'write:inventory', 'read:billing', 'write:billing'];
+      case 'pharmacist': return ['read:prescriptions', 'read:equipment', 'write:dispense'];
       case 'patient': return ['read:own_records', 'read:own_appointments', 'write:own_appointments', 'read:own_billing'];
       default: return [];
     }

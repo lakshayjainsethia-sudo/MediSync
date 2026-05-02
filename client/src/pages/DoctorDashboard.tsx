@@ -8,6 +8,7 @@ import { Calendar, Clock, User as UserIcon, LogOut, Check, FileText, Pill } from
 import Button from '../components/ui/Button'
 import Card, { CardHeader, CardContent } from '../components/ui/Card'
 import { format } from 'date-fns'
+import { io } from 'socket.io-client'
 
 export default function DoctorDashboard() {
   const { user, logout } = useAuth()
@@ -17,6 +18,8 @@ export default function DoctorDashboard() {
   const [showCompleteModal, setShowCompleteModal] = useState(false)
   const [diagnosis, setDiagnosis] = useState('')
   const [prescription, setPrescription] = useState('')
+  const [clinicalNotes, setClinicalNotes] = useState('')
+  const [billingSummary, setBillingSummary] = useState('')
   const [loading, setLoading] = useState(false)
 
   const handleLogout = async () => {
@@ -26,6 +29,49 @@ export default function DoctorDashboard() {
 
   useEffect(() => {
     fetchAppointments()
+
+    // Listen for emergencies
+    const socket = io('http://localhost:5000', { withCredentials: true })
+    socket.on('emergency_update', (data) => {
+      toast.error(`🚨 EMERGENCY CONFIRMED: Patient ${data.patientName} has been pushed to the top of your queue!`, { autoClose: false })
+      fetchAppointments()
+    })
+
+    socket.on('red_triage_alert', (data) => {
+      // Play 440Hz beep for 0.3s
+      try {
+        const ctx = new (window.AudioContext || (window as any).webkitAudioContext)()
+        const osc = ctx.createOscillator()
+        osc.connect(ctx.destination)
+        osc.frequency.value = 440
+        osc.start()
+        setTimeout(() => osc.stop(), 300)
+      } catch (e) { console.error('Audio play failed', e) }
+      
+      toast.error(`🚨 AI RED ALERT: Patient ${data.patientName} flagged as EMERGENCY! Reason: ${data.triage_reason}`, { autoClose: false })
+      
+      setAppointments(prev => {
+        const existing = prev.find(a => a._id === data.appointmentId)
+        if (existing) {
+          const updated = prev.map(a => 
+            a._id === data.appointmentId 
+              ? { ...a, triage_tag: 'RED' as 'RED', weightedScore: data.weightedScore, pulse: true } 
+              : a
+          )
+          return updated.sort((a: any, b: any) => {
+            if (a.riskOverride && !b.riskOverride) return -1;
+            if (!a.riskOverride && b.riskOverride) return 1;
+            return (b.weightedScore || 0) - (a.weightedScore || 0);
+          })
+        }
+        fetchAppointments()
+        return prev
+      })
+    })
+
+    return () => {
+      socket.disconnect()
+    }
   }, [])
 
   const fetchAppointments = async () => {
@@ -37,20 +83,24 @@ export default function DoctorDashboard() {
     }
   }
 
-  const handleCompleteAppointment = async () => {
+  const handleEndConsultation = async () => {
     if (!selectedAppointment) return
 
     setLoading(true)
     try {
-      await appointmentsApi.complete(selectedAppointment._id, {
+      await appointmentsApi.endConsultation(selectedAppointment._id, {
         diagnosis,
-        prescription
+        prescription,
+        clinicalNotes,
+        billingSummary
       })
-      toast.success('Appointment marked as completed')
+      toast.success('Consultation completed successfully')
       setShowCompleteModal(false)
       setSelectedAppointment(null)
       setDiagnosis('')
       setPrescription('')
+      setClinicalNotes('')
+      setBillingSummary('')
       fetchAppointments()
     } catch (error: any) {
       toast.error(error.response?.data?.message || 'Failed to complete appointment')
@@ -63,16 +113,21 @@ export default function DoctorDashboard() {
     setSelectedAppointment(appointment)
     setDiagnosis(appointment.diagnosis || '')
     setPrescription(appointment.prescription || '')
+    setClinicalNotes((appointment as any).clinicalNotes || '')
+    setBillingSummary((appointment as any).billingSummary || '')
     setShowCompleteModal(true)
   }
-
 
   const upcomingAppointments = appointments.filter(apt => {
     const aptDate = new Date(apt.date)
     const today = new Date()
     today.setHours(0, 0, 0, 0)
     return aptDate >= today && apt.status === 'scheduled'
-  })
+  }).sort((a: any, b: any) => {
+    if (a.riskOverride && !b.riskOverride) return -1;
+    if (!a.riskOverride && b.riskOverride) return 1;
+    return (b.weightedScore || 0) - (a.weightedScore || 0);
+  });
 
   const pastAppointments = appointments.filter(apt => {
     const aptDate = new Date(apt.date)
@@ -178,8 +233,8 @@ export default function DoctorDashboard() {
                 upcomingAppointments.map((apt) => {
                   const patient = typeof apt.patient === 'object' ? apt.patient : null
                   return (
-                    <div key={apt._id} className="py-5 hover:bg-slate-50/50 transition duration-150">
-                      <div className="flex justify-between items-start">
+                    <div key={apt._id} className={`py-5 hover:bg-slate-50/50 transition duration-150 rounded-xl ${(apt as any).pulse || apt.triage_tag === 'RED' ? 'emergency-pulse bg-red-50/50' : ''}`}>
+                      <div className="flex justify-between items-start px-4">
                         <div className="flex-1">
                           <div className="flex items-center space-x-3 mb-2">
                             <UserIcon className="h-5 w-5 text-blue-600" />
@@ -230,17 +285,17 @@ export default function DoctorDashboard() {
                           <Button
                             size="sm"
                             onClick={() => {
-                              const patient = typeof apt.patient === 'object' ? apt.patient : null
-                              navigate('/prescriptions', { state: { createForAppointment: apt._id, patientId: patient?._id } })
+                              navigate(`/doctor/consultation/${apt._id}`)
                             }}
-                            variant="outline"
+                            className="bg-blue-600 hover:bg-blue-700 text-white border-transparent"
                           >
                             <Pill className="h-4 w-4 mr-1" />
-                            Prescribe
+                            Consult
                           </Button>
                           <Button
                             size="sm"
                             onClick={() => openCompleteModal(apt)}
+                            className="bg-emerald-600 hover:bg-emerald-700 text-white"
                           >
                             <Check className="h-4 w-4 mr-1" />
                             Complete
@@ -321,15 +376,35 @@ export default function DoctorDashboard() {
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-lg max-w-2xl w-full">
             <div className="px-6 py-4 border-b border-gray-200">
-              <h2 className="text-xl font-semibold text-slate-900">Complete Appointment</h2>
+              <h2 className="text-xl font-semibold text-slate-900">Complete Consultation</h2>
             </div>
-            <div className="px-6 py-4 space-y-4">
+            <div className="px-6 py-4 space-y-4 max-h-[70vh] overflow-y-auto">
+              <div>
+                <label className="block text-sm font-bold text-red-700 mb-2">Clinical Notes (Private)</label>
+                <textarea
+                  value={clinicalNotes}
+                  onChange={(e) => setClinicalNotes(e.target.value)}
+                  rows={3}
+                  className="w-full px-4 py-2 border border-red-300 bg-red-50 rounded-lg focus:ring-2 focus:ring-red-500"
+                  placeholder="Private doctor notes..."
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Billing & Pharmacy Summary (Shared)</label>
+                <textarea
+                  value={billingSummary}
+                  onChange={(e) => setBillingSummary(e.target.value)}
+                  rows={2}
+                  className="w-full px-4 py-2 border border-blue-300 bg-blue-50 rounded-lg focus:ring-2 focus:ring-blue-500"
+                  placeholder="Summary for receptionist and pharmacy..."
+                />
+              </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">Diagnosis</label>
                 <textarea
                   value={diagnosis}
                   onChange={(e) => setDiagnosis(e.target.value)}
-                  rows={4}
+                  rows={2}
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
                   placeholder="Enter diagnosis..."
                 />
@@ -339,25 +414,27 @@ export default function DoctorDashboard() {
                 <textarea
                   value={prescription}
                   onChange={(e) => setPrescription(e.target.value)}
-                  rows={4}
+                  rows={2}
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
                   placeholder="Enter prescription..."
                 />
               </div>
-              <div className="flex justify-end space-x-3 pt-4">
+              <div className="flex justify-end space-x-3 pt-4 border-t">
                 <button
                   onClick={() => {
                     setShowCompleteModal(false)
                     setSelectedAppointment(null)
                     setDiagnosis('')
                     setPrescription('')
+                    setClinicalNotes('')
+                    setBillingSummary('')
                   }}
                   className="px-6 py-2 border border-gray-300 rounded-lg hover:bg-slate-50 transition"
                 >
                   Cancel
                 </button>
                 <button
-                  onClick={handleCompleteAppointment}
+                  onClick={handleEndConsultation}
                   disabled={loading}
                   className="px-6 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
                 >

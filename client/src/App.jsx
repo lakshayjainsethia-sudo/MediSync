@@ -7,7 +7,8 @@ import MainLayout from './layouts/MainLayout';
 import Login from './pages/Login';
 import Unauthorized from './pages/Unauthorized';
 import AdminDashboard from './pages/admin/AdminDashboard';
-import DoctorDashboard from './pages/doctor/DoctorDashboard';
+import DoctorDashboard from './pages/DoctorDashboard'; // Fixing import path just in case
+import ConsultationView from './pages/doctor/ConsultationView';
 import PatientDashboard from './pages/patient/PatientDashboard';
 import NotFound from './pages/NotFound';
 
@@ -30,8 +31,9 @@ function App() {
             </Route>
 
             {/* Doctor Only Routes */}
-            <Route element={<ProtectedRoute allowedRoles={['Doctor']} />}>
+            <Route element={<ProtectedRoute allowedRoles={['Doctor', 'doctor']} />}>
               <Route path="/doctor/dashboard" element={<DoctorDashboard />} />
+              <Route path="/doctor/consultation/:appointmentId" element={<ConsultationView />} />
               {/* Other doctor routes: /doctor/patients, /doctor/calendar */}
             </Route>
 
