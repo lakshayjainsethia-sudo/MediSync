@@ -7,16 +7,34 @@
   const { createProxyMiddleware } = require('http-proxy-middleware');
 
   const app = express();
+  
+  // Deployment Hardening
+  app.set('trust proxy', 1);
 
-  // Middleware
   const corsOptions = {
     origin: process.env.CLIENT_URL || ['http://localhost:5173', 'http://localhost:5174', 'http://localhost:5175', 'http://localhost:5176', 'http://127.0.0.1:5173'],
     methods: ['GET','POST','PATCH','PUT','DELETE'],
-    allowedHeaders: ['Content-Type','Authorization'],
+    allowedHeaders: ['Content-Type','Authorization','X-CSRF-Token'],
     credentials: true
   };
   
   app.use(cors(corsOptions));
+  
+  // Prometheus Metrics (/metrics endpoint)
+  const promBundle = require('express-prom-bundle');
+  const metricsMiddleware = promBundle({
+    includeMethod: true, 
+    includePath: true, 
+    includeStatusCode: true,
+    includeUp: true,
+    promClient: {
+      collectDefaultMetrics: {}
+    }
+  });
+  app.use(metricsMiddleware);
+  
+  const requestTracker = require('./middleware/requestTracker');
+  app.use(requestTracker);
 
   // 2B. Helmet (HTTP Security Headers)
   const helmet = require('helmet');
@@ -37,10 +55,14 @@
   // 2C. NoSQL Injection Prevention
   const mongoSanitize = require('express-mongo-sanitize');
   const { logAudit } = require('./utils/auditLogger');
+  const { securityLogger } = require('./utils/logger');
+  const { alertSecurityEvent } = require('./utils/alerter');
+  
   app.use(mongoSanitize({
     replaceWith: '_',
     onSanitize: ({ req, key }) => {
-      console.warn(`[SECURITY] Sanitized NoSQL injection attempt on key: ${key} from IP: ${req.ip}`);
+      securityLogger.warn(`[SECURITY] Sanitized NoSQL injection attempt`, { key, ip: req.ip, requestId: req.id });
+      alertSecurityEvent('NOSQL_INJECTION_ATTEMPT', 'HIGH', { key, ip: req.ip });
       logAudit('INJECTION_ATTEMPT', req, null, 'System', { key, ip: req.ip });
     }
   }));
@@ -62,6 +84,9 @@
   app.use(cookieParser());
   app.use(morgan('dev'));
 
+  const csrfProtection = require('./middleware/csrf');
+  app.use(csrfProtection);
+
   // 4. SECURITY RESPONSE HEADERS
   app.use((req, res, next) => {
     res.removeHeader('X-Powered-By');
@@ -78,7 +103,7 @@
   const rateLimit = require('express-rate-limit');
   const globalLimiter = rateLimit({
     windowMs: 15 * 60 * 1000,
-    max: 100,
+    max: 200,
     standardHeaders: true,
     legacyHeaders: false,
     message: {
@@ -87,55 +112,50 @@
     }
   });
 
-  const authLimiter = rateLimit({
+  const strictLimiter = rateLimit({
     windowMs: 15 * 60 * 1000,
-    max: 10,
+    max: 20,
     message: {
       status: 429,
-      error: 'Too many login attempts. Please try again after 15 minutes.'
-    },
-    skipSuccessfulRequests: true
+      error: 'Too many sensitive requests. Please try again after 15 minutes.'
+    }
   });
 
-  app.use('/api/', globalLimiter);
-  app.use('/api/auth/login', authLimiter);
-  app.use('/api/auth/register', authLimiter);
-  app.use('/api/auth/refresh', authLimiter);
-
+  app.use('/api/v1/', globalLimiter);
+  app.use('/api/v1/auth/login', strictLimiter);
+  app.use('/api/v1/auth/register', strictLimiter);
 
   // Proxy to FastAPI Intelligence Engine
-  app.use('/api/intelligence', createProxyMiddleware({
+  app.use('/api/v1/intelligence', createProxyMiddleware({
     target: process.env.FASTAPI_URL || 'http://localhost:8000',
     changeOrigin: true,
     pathRewrite: {
-      '^/api/intelligence': '', // remove base path when proxying
+      '^/api/v1/intelligence': '', // remove base path when proxying
     },
   }));
 
   // Routes
   const aiRoutes = require('./routes/ai');
 
-  app.use('/api/auth', require('./routes/auth'));
-  app.use('/api/doctors', require('./routes/doctors'));
-  app.use('/api/patients', require('./routes/patients'));
-  app.use('/api/appointments', require('./routes/appointments'));
-  app.use('/api/admin', require('./routes/admin'));
-  app.use('/api/departments', require('./routes/departments'));
-  app.use('/api/medical-records', require('./routes/medicalRecords'));
-  app.use('/api/prescriptions', require('./routes/prescriptions'));
-  app.use('/api/billing', require('./routes/billing'));
-  app.use('/api/notifications', require('./routes/notifications'));
-  app.use('/api/ai', aiRoutes);
-  app.use('/api/equipment', require('./routes/equipment'));
-  app.use('/api/pharmacist', require('./routes/pharmacist'));
-  app.use('/api/medicines', require('./routes/medicines'));
-  app.use('/api/receptionist', require('./routes/receptionist'));
+  app.use('/api/v1/auth', require('./routes/auth'));
+  app.use('/api/v1/doctors', require('./routes/doctors'));
+  app.use('/api/v1/patients', require('./routes/patients'));
+  app.use('/api/v1/appointments', require('./routes/appointments'));
+  app.use('/api/v1/admin', require('./routes/admin'));
+  app.use('/api/v1/departments', require('./routes/departments'));
+  app.use('/api/v1/medical-records', require('./routes/medicalRecords'));
+  app.use('/api/v1/prescriptions', require('./routes/prescriptions'));
+  app.use('/api/v1/billing', require('./routes/billing'));
+  app.use('/api/v1/notifications', require('./routes/notifications'));
+  app.use('/api/v1/ai', aiRoutes);
+  app.use('/api/v1/equipment', require('./routes/equipment'));
+  app.use('/api/v1/pharmacist', require('./routes/pharmacist'));
+  app.use('/api/v1/medicines', require('./routes/medicines'));
+  app.use('/api/v1/receptionist', require('./routes/receptionist'));
 
   // Error handling middleware
-  app.use((err, req, res, next) => {
-    console.error(err.stack);
-    res.status(500).json({ message: 'Something went wrong!' });
-  });
+  const globalErrorHandler = require('./middleware/errorHandler');
+  app.use(globalErrorHandler);
 
   const http = require('http');
   const { Server } = require('socket.io');

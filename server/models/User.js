@@ -76,7 +76,6 @@ const userSchema = new mongoose.Schema({
     default: true
   },
   lastLogin: Date,
-  refreshToken: String,
   passwordChangedAt: Date,
   passwordResetToken: String,
   passwordResetExpires: Date
@@ -88,12 +87,11 @@ const userSchema = new mongoose.Schema({
 
 // Encrypt password using bcrypt
 userSchema.pre('save', async function(next) {
-  if (!this.isModified('password')) {
-    next();
+  if (this.isModified('password') && this.password) {
+    const salt = await bcrypt.genSalt(10);
+    this.password = await bcrypt.hash(this.password, salt);
   }
-
-  const salt = await bcrypt.genSalt(10);
-  this.password = await bcrypt.hash(this.password, salt);
+  next();
 });
 
 // Sign JWT and return

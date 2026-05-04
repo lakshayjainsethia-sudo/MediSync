@@ -1,16 +1,15 @@
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
+const Session = require('../models/Session');
 
 // Protect routes - user must be authenticated
 const protect = async (req, res, next) => {
   try {
     let token;
     
-    // Get token from cookies or Authorization header
+    // STRICT: Only read token from secure HTTP-only cookies
     if (req.cookies && req.cookies.token) {
       token = req.cookies.token;
-    } else if (req.headers.authorization && req.headers.authorization.startsWith('Bearer')) {
-      token = req.headers.authorization.split(' ')[1];
     }
 
     if (!token) {
@@ -38,6 +37,13 @@ const protect = async (req, res, next) => {
           isPendingApproval: true 
         });
       }
+
+      // Track online activity (Fire-and-forget, touches most recently active session)
+      Session.findOneAndUpdate(
+        { user: req.user._id }, 
+        { lastActivity: Date.now() }, 
+        { sort: { lastActivity: -1 } }
+      ).catch(() => {});
 
       next();
     } catch (err) {
@@ -80,7 +86,7 @@ const generateRefreshToken = (id) => {
 };
 
 // Send token response
-const sendTokenResponse = (user, statusCode, res) => {
+const sendTokenResponse = async (user, statusCode, req, res) => {
   // Create token
   const token = generateToken(user._id);
   const refreshToken = generateRefreshToken(user._id);
@@ -94,25 +100,43 @@ const sendTokenResponse = (user, statusCode, res) => {
     sameSite: 'strict'
   };
 
-  // Save refresh token to database
-  user.refreshToken = refreshToken;
-  user.save({ validateBeforeSave: false });
+  const UAParser = require('ua-parser-js');
+  const geoip = require('geoip-lite');
+  
+  const parser = new UAParser(req.headers['user-agent']);
+  const result = parser.getResult();
+  const deviceOS = result.os.name ? `${result.os.name} ${result.os.version || ''}` : 'Unknown OS';
+  const browser = result.browser.name ? `${result.browser.name} ${result.browser.version || ''}` : 'Unknown Browser';
+  
+  const ip = req.ip || req.connection?.remoteAddress;
+  const geo = geoip.lookup(ip);
+  const location = geo ? `${geo.city || 'Unknown City'}, ${geo.country || 'Unknown Country'}` : 'Unknown Location';
 
-  // Define robust dynamic context to drive frontend visibility
-  const getPermissions = (role) => {
-    switch(role) {
-      case 'admin': return ['all'];
-      case 'doctor': return ['read:patients', 'write:medical-records', 'read:appointments', 'write:appointments', 'read:billing'];
-      case 'receptionist': return ['read:patients', 'read:appointments', 'write:appointments', 'read:billing', 'write:billing'];
-      case 'pharmacist': return ['read:prescriptions', 'read:equipment', 'write:dispense'];
-      case 'patient': return ['read:own_records', 'read:own_appointments', 'write:own_appointments', 'read:own_billing'];
-      default: return [];
-    }
-  };
+  // Anomaly Detection Layer
+  const { detectAnomalies } = require('./anomalyDetector');
+  await detectAnomalies(user, ip, deviceOS);
+
+  // Save session to database for revocation tracking
+  await Session.create({
+    user: user._id,
+    refreshTokenHash: refreshToken,
+    deviceInfo: req.headers['user-agent'],
+    deviceOS,
+    browser,
+    ip,
+    location,
+    lastActivity: Date.now(),
+    expiresAt: options.expires
+  });
+
+  // Fetch robust dynamic context to drive frontend visibility
+  const permissionsMap = require('../config/permissions');
+  const getPermissions = (role) => permissionsMap[role] || [];
 
   res
     .status(statusCode)
     .cookie(process.env.COOKIE_NAME || 'token', token, options)
+    .cookie('refreshToken', refreshToken, options)
     .json({
       success: true,
       token,
