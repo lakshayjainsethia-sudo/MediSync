@@ -127,6 +127,35 @@ router.put('/users/:id/approve', async (req, res) => {
   }
 });
 
+// @route   PATCH /api/admin/doctors/:id
+// @desc    Update a doctor (e.g. consultation fee)
+// @access  Private (Admin only)
+router.patch('/doctors/:id', async (req, res) => {
+  try {
+    const { consultationFee } = req.body;
+    const updateFields = {};
+    if (consultationFee !== undefined) updateFields.consultationFee = Number(consultationFee);
+
+    const doctor = await User.findOneAndUpdate(
+      { _id: req.params.id, role: 'doctor' },
+      { $set: updateFields },
+      { new: true }
+    ).select('-password -refreshToken');
+
+    if (!doctor) {
+      return res.status(404).json({ message: 'Doctor not found' });
+    }
+
+    res.json(doctor);
+  } catch (err) {
+    console.error(err.message);
+    if (err.kind === 'ObjectId') {
+      return res.status(404).json({ message: 'Doctor not found' });
+    }
+    res.status(500).send('Server Error');
+  }
+});
+
 // @route   DELETE /api/admin/doctors/:id
 // @desc    Delete a doctor
 // @access  Private (Admin only)

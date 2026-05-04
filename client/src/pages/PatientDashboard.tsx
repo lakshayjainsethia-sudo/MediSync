@@ -178,7 +178,7 @@ export default function PatientDashboard() {
                           </div>
                         )}
                       </div>
-                      {apt.status === 'scheduled' && (
+                      {(apt.status === 'scheduled' || apt.status === 'Confirmed') && (
                         <button
                           onClick={() => handleCancelAppointment(apt._id)}
                           className="px-4 py-2 text-red-600 hover:bg-red-50 rounded-lg transition"

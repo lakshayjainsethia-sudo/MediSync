@@ -9,9 +9,9 @@ interface RevenueInsightsProps {
 }
 
 const formatCurrency = (value: number) =>
-  new Intl.NumberFormat('en-US', {
+  new Intl.NumberFormat('en-IN', {
     style: 'currency',
-    currency: 'USD',
+    currency: 'INR',
     maximumFractionDigits: 0
   }).format(value || 0)
 
@@ -59,7 +59,7 @@ export default function RevenueInsights({ trendData, breakdownData, userDistribu
                 </defs>
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis dataKey="date" />
-                <YAxis tickFormatter={(value) => `$${(value / 1000).toFixed(0)}k`} />
+                <YAxis tickFormatter={(value) => `₹${(value / 1000).toFixed(0)}k`} />
                 <Tooltip formatter={(value: number) => formatCurrency(value)} />
                 <Legend />
                 <Area
@@ -87,7 +87,7 @@ export default function RevenueInsights({ trendData, breakdownData, userDistribu
                 <BarChart data={breakdown}>
                   <CartesianGrid strokeDasharray="3 3" />
                   <XAxis dataKey="status" />
-                  <YAxis tickFormatter={(value) => `$${(value / 1000).toFixed(0)}k`} />
+                  <YAxis tickFormatter={(value) => `₹${(value / 1000).toFixed(0)}k`} />
                   <Tooltip formatter={(value: number) => formatCurrency(value)} />
                   <Legend />
                   <Bar dataKey="total" fill="#0ea5e9" radius={[6, 6, 0, 0]} />

@@ -35,11 +35,16 @@ exports.addMedicine = async (req, res, next) => {
 exports.updateMedicineStock = async (req, res, next) => {
   try {
     const { id } = req.params;
-    const { stockQuantity } = req.body;
+    const { stockQuantity, price, minimumThreshold } = req.body;
+
+    const updateData = {};
+    if (stockQuantity !== undefined) updateData.stockQuantity = stockQuantity;
+    if (price !== undefined) updateData.price = price;
+    if (minimumThreshold !== undefined) updateData.minimumThreshold = minimumThreshold;
 
     const medicine = await Medicine.findByIdAndUpdate(
       id,
-      { stockQuantity },
+      updateData,
       { new: true, runValidators: true }
     );
 
@@ -156,15 +161,12 @@ exports.getOverview = async (req, res, next) => {
 };
 
 exports.dispensePrescription = async (req, res, next) => {
-  const mongoose = require('mongoose');
-  const session = await mongoose.startSession();
-  session.startTransaction();
-
   try {
     const appointmentId = req.params.appointmentId;
     const { medicinesToDispense = [] } = req.body;
     
-    let appointment = await Appointment.findById(appointmentId).populate('patient', 'name').session(session);
+    let appointment = await Appointment.findById(appointmentId).populate('patient', 'name');
+
     if (!appointment) {
       throw new ApiError(404, 'Appointment not found');
     }
@@ -176,18 +178,33 @@ exports.dispensePrescription = async (req, res, next) => {
     const io = req.app.get('io');
 
     // Process each medicine deduction
+    const resolvedItems = [];
+    let subtotal = 0;
+
     for (const item of medicinesToDispense) {
       const { medicineId, quantity } = item;
       
       const updatedMedicine = await Medicine.findOneAndUpdate(
         { _id: medicineId, stockQuantity: { $gte: quantity } },
         { $inc: { stockQuantity: -quantity } },
-        { new: true, session }
+        { new: true }
       );
 
       if (!updatedMedicine) {
         throw new ApiError(400, `Insufficient stock for medicine ID: ${medicineId}`);
       }
+
+      const unitPrice = updatedMedicine.price || 0;
+      const total = quantity * unitPrice;
+      subtotal += total;
+
+      resolvedItems.push({
+        medicineId: updatedMedicine._id,
+        medicineName: updatedMedicine.name,
+        quantity,
+        unitPrice,
+        total
+      });
 
       // Check threshold for low stock alert
       if (updatedMedicine.stockQuantity <= updatedMedicine.minimumThreshold) {
@@ -205,18 +222,34 @@ exports.dispensePrescription = async (req, res, next) => {
     appointment.dispensed = true;
     appointment.dispensedAt = Date.now();
     appointment.dispensedBy = req.user.id;
+    
+    // Auto-generate the medicine bill portion
+    appointment.medicineBill = {
+      items: resolvedItems,
+      subtotal,
+      generatedAt: Date.now(),
+      generatedBy: req.user.id,
+      sentToReceptionist: true
+    };
+    appointment.billingType = 'WithMedicines';
 
-    await appointment.save({ session });
+    await appointment.save();
 
-    await session.commitTransaction();
-    session.endSession();
-
-    // Emit Socket.io event to doctors room
+    // Emit Socket.io events
     if (io) {
       io.to('doctors').emit('prescription_dispensed', {
         appointmentId,
         patientName: appointment.patient ? appointment.patient.name : 'Unknown Patient',
         dispensedAt: appointment.dispensedAt
+      });
+
+      io.to('receptionists').emit('medicine_bill_ready', {
+        appointmentId: appointment._id,
+        patientName: appointment.patient ? appointment.patient.name : 'Unknown Patient',
+        doctorName: appointment.doctor ? appointment.doctor.name : 'Unknown Doctor',
+        medicineSubtotal: subtotal,
+        itemCount: resolvedItems.length,
+        sentAt: Date.now()
       });
     }
 
@@ -225,11 +258,67 @@ exports.dispensePrescription = async (req, res, next) => {
       dispensedBy: req.user.id,
       items: medicinesToDispense.length
     });
+    
+    await logAudit('MEDICINE_BILL_GENERATED', req, appointmentId, 'Appointment', {
+      subtotal,
+      itemCount: resolvedItems.length
+    });
 
     res.json(appointment);
   } catch (error) {
-    await session.abortTransaction();
-    session.endSession();
+    next(error instanceof ApiError ? error : new ApiError(400, error.message));
+  }
+};
+
+exports.noMedicineHandoff = async (req, res, next) => {
+  try {
+    const appointmentId = req.params.appointmentId;
+    
+    let appointment = await Appointment.findById(appointmentId).populate('patient', 'name').populate('doctor', 'name');
+    
+    if (!appointment) {
+      throw new ApiError(404, 'Appointment not found');
+    }
+
+    if (appointment.status !== 'Billing_Pending') {
+      throw new ApiError(400, 'Appointment is not pending for billing');
+    }
+
+    if (appointment.dispensed) {
+      throw new ApiError(400, 'Prescription already dispensed');
+    }
+
+    appointment.billingType = 'ConsultationOnly';
+    appointment.dispensed = true; // marks it as handled
+    appointment.medicineBill = {
+      items: [],
+      subtotal: 0,
+      generatedAt: Date.now(),
+      generatedBy: req.user.id,
+      sentToReceptionist: true
+    };
+
+    await appointment.save();
+
+    const io = req.app.get('io');
+    if (io) {
+      io.to('receptionists').emit('medicine_bill_ready', {
+        appointmentId: appointment._id,
+        patientName: appointment.patient ? appointment.patient.name : 'Unknown Patient',
+        doctorName: appointment.doctor ? appointment.doctor.name : 'Unknown Doctor',
+        medicineSubtotal: 0,
+        itemCount: 0,
+        billingType: 'ConsultationOnly',
+        sentAt: Date.now()
+      });
+    }
+
+    await logAudit('NO_MEDICINE_HANDOFF', req, appointment._id, 'Appointment', {
+      billingType: 'ConsultationOnly'
+    });
+
+    res.json(appointment);
+  } catch (error) {
     next(error instanceof ApiError ? error : new ApiError(400, error.message));
   }
 };

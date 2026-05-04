@@ -1,4 +1,4 @@
-import { RefreshCcw, Users, UserCheck, Calendar, Activity, Clock, DollarSign, UserPlus } from 'lucide-react'
+import { RefreshCcw, Users, UserCheck, Calendar, Activity, Clock, IndianRupee, UserPlus } from 'lucide-react'
 import Button from '../../../components/ui/Button'
 import StatCard from '../../../components/ui/StatCard'
 import { DashboardStats } from '../../../types'
@@ -9,9 +9,9 @@ interface StatsOverviewProps {
   onRefresh?: () => void
 }
 
-const currencyFormatter = new Intl.NumberFormat('en-US', {
+const currencyFormatter = new Intl.NumberFormat('en-IN', {
   style: 'currency',
-  currency: 'USD',
+  currency: 'INR',
   maximumFractionDigits: 0
 })
 
@@ -54,7 +54,7 @@ export default function StatsOverview({ stats, loading, onRefresh }: StatsOvervi
     {
       title: 'Total Revenue (30d)',
       value: currencyFormatter.format(stats.revenue || 0),
-      icon: <DollarSign className="h-8 w-8 text-emerald-600 opacity-20" />
+      icon: <IndianRupee className="h-8 w-8 text-emerald-600 opacity-20" />
     },
     {
       title: 'Active Staff',

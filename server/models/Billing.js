@@ -97,6 +97,7 @@ const billingSchema = new mongoose.Schema({
   discount: { type: Number, default: 0 },
   status: { type: String, enum: ['Draft', 'Unpaid', 'Paid'], default: 'Draft' },
   billNumber: { type: String, unique: true, sparse: true },
+  invoiceNumber: { type: String, unique: true, sparse: true },
   createdAt: { type: Date, default: Date.now }
 }, {
   timestamps: true,

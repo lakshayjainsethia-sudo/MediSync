@@ -69,6 +69,10 @@ export default function DoctorDashboard() {
       })
     })
 
+    socket.on('prescription_dispensed', (data) => {
+      toast.info(`💊 Prescription dispensed for ${data.patientName}`, { autoClose: 4000 })
+    })
+
     return () => {
       socket.disconnect()
     }
@@ -94,14 +98,16 @@ export default function DoctorDashboard() {
         clinicalNotes,
         billingSummary
       })
-      toast.success('Consultation completed successfully')
+      
+      setAppointments(prev => prev.filter(a => a._id !== selectedAppointment._id))
+      toast.success('✓ Patient handed off to pharmacy successfully.', { autoClose: 4000 })
+      
       setShowCompleteModal(false)
       setSelectedAppointment(null)
       setDiagnosis('')
       setPrescription('')
       setClinicalNotes('')
       setBillingSummary('')
-      fetchAppointments()
     } catch (error: any) {
       toast.error(error.response?.data?.message || 'Failed to complete appointment')
     } finally {
@@ -241,7 +247,28 @@ export default function DoctorDashboard() {
                             <h3 className="text-lg font-semibold text-slate-900">
                               {patient?.name || 'Unknown Patient'}
                             </h3>
+                            {apt.triage_tag && (
+                              <span className={`px-2 py-0.5 rounded text-xs font-bold ${
+                                apt.triage_tag === 'RED' ? 'bg-red-100 text-red-800 border border-red-200' :
+                                apt.triage_tag === 'ORANGE' ? 'bg-orange-100 text-orange-800 border border-orange-200' :
+                                'bg-green-100 text-green-800 border border-green-200'
+                              }`}>
+                                {apt.triage_tag}
+                              </span>
+                            )}
+                            {apt.riskOverride && (
+                              <span className="px-2 py-0.5 bg-red-600 text-white text-xs rounded-md font-bold uppercase tracking-wider shadow-sm animate-pulse">
+                                Receptionist Override
+                              </span>
+                            )}
                           </div>
+                          {apt.riskOverride && apt.riskOverrideReason && (
+                            <div className="ml-8 mb-2">
+                              <p className="text-xs text-red-600 font-semibold bg-red-50 inline-block px-2 py-1 rounded border border-red-100">
+                                Override Reason: {apt.riskOverrideReason}
+                              </p>
+                            </div>
+                          )}
                           <div className="flex items-center space-x-4 text-sm text-slate-600 ml-8">
                             <div className="flex items-center space-x-1">
                               <Calendar className="h-4 w-4 text-slate-400" />
@@ -291,14 +318,6 @@ export default function DoctorDashboard() {
                           >
                             <Pill className="h-4 w-4 mr-1" />
                             Consult
-                          </Button>
-                          <Button
-                            size="sm"
-                            onClick={() => openCompleteModal(apt)}
-                            className="bg-emerald-600 hover:bg-emerald-700 text-white"
-                          >
-                            <Check className="h-4 w-4 mr-1" />
-                            Complete
                           </Button>
                         </div>
                       </div>

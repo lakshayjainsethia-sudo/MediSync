@@ -33,6 +33,7 @@ router
 
 router.get('/overview', authorizeRoles('Pharmacist', 'Admin'), getOverview);
 router.patch('/prescriptions/:appointmentId/dispense', authorizeRoles('Pharmacist', 'Admin'), dispensePrescription);
+router.patch('/prescriptions/:appointmentId/no-medicine', authorizeRoles('Pharmacist', 'Admin'), require('../controllers/pharmacist').noMedicineHandoff);
 router.get('/prescriptions/pending', authorizeRoles('Pharmacist', 'Admin'), getPendingPrescriptions);
 router.get('/medicines/low-stock', authorizeRoles('Pharmacist', 'Admin'), getLowStockMedicines);
 

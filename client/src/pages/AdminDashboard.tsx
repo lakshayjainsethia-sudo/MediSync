@@ -10,8 +10,9 @@ import RevenueInsights from '../features/admin/components/RevenueInsights'
 
 import UserManagementPanel from '../features/admin/components/UserManagementPanel'
 import EquipmentManager from '../features/admin/components/EquipmentManager'
+import PharmacyManager from '../features/admin/components/PharmacyManager'
 
-type TabType = 'analytics' | 'users' | 'equipment'
+type TabType = 'analytics' | 'users' | 'equipment' | 'medicines'
 
 export default function AdminDashboard() {
   const { user } = useAuth()
@@ -123,6 +124,16 @@ export default function AdminDashboard() {
             >
               Equipment Tracking
             </button>
+            <button
+              onClick={() => setActiveTab('medicines')}
+              className={`${
+                activeTab === 'medicines'
+                  ? 'border-primary-500 text-primary-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+              } whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors`}
+            >
+              Medicines
+            </button>
           </nav>
         </div>
 
@@ -159,11 +170,16 @@ export default function AdminDashboard() {
             pendingActionIds={pendingActionIds}
             onApprove={handleApproveUser}
             onDelete={handleDeleteUser}
+            onRefresh={refetchUsers}
           />
         )}
 
         {activeTab === 'equipment' && (
           <EquipmentManager />
+        )}
+
+        {activeTab === 'medicines' && (
+          <PharmacyManager />
         )}
       </div>
     </div>

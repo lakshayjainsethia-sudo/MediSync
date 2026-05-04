@@ -10,6 +10,7 @@ import PatientDashboard from './pages/PatientDashboard'
 import DoctorDashboard from './pages/DoctorDashboard'
 import ConsultationView from './pages/doctor/ConsultationView'
 import StaffDashboard from './pages/StaffDashboard'
+import ReceptionistDashboard from './pages/ReceptionistDashboard'
 import AdminDashboard from './pages/AdminDashboard'
 import AdminUsers from './pages/AdminUsers'
 import Home from './pages/Home'
@@ -24,8 +25,9 @@ import Appointments from './pages/Appointments'
 import Lobby from './pages/Lobby'
 import TriageQueue from './pages/TriageQueue'
 import PharmacistDashboard from './pages/pharmacist/PharmacistDashboard'
+import Dispensary from './pages/pharmacist/Dispensary'
 
-const STAFF_ROLES = ['nurse', 'receptionist'] as const
+const STAFF_ROLES = ['nurse'] as const
 
 interface PrivateRouteProps {
   children: React.ReactNode
@@ -99,10 +101,26 @@ function AppRoutes() {
         />
       ))}
       <Route
+        path="/receptionist/dashboard"
+        element={
+          <PrivateRoute allowedRoles={['receptionist']}>
+            <ReceptionistDashboard />
+          </PrivateRoute>
+        }
+      />
+      <Route
         path="/pharmacist/dashboard"
         element={
           <PrivateRoute allowedRoles={['pharmacist']}>
             <PharmacistDashboard />
+          </PrivateRoute>
+        }
+      />
+      <Route
+        path="/pharmacist/dispensary"
+        element={
+          <PrivateRoute allowedRoles={['pharmacist']}>
+            <Dispensary />
           </PrivateRoute>
         }
       />

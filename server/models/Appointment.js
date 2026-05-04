@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const { fieldEncryption } = require('mongoose-field-encryption');
 
 const appointmentSchema = new mongoose.Schema({
   patient: {
@@ -115,7 +116,27 @@ const appointmentSchema = new mongoose.Schema({
   },
   dispensed: { type: Boolean, default: false },
   dispensedAt: { type: Date },
-  dispensedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' }
+  dispensedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+  medicineBill: {
+    items: [
+      {
+        medicineId:   { type: mongoose.Schema.Types.ObjectId, ref: 'Medicine' },
+        medicineName: { type: String },
+        quantity:     { type: Number },
+        unitPrice:    { type: Number },
+        total:        { type: Number }
+      }
+    ],
+    subtotal:       { type: Number, default: 0 },
+    generatedAt:    { type: Date },
+    generatedBy:    { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+    sentToReceptionist: { type: Boolean, default: false }
+  },
+  billingType: {
+    type: String,
+    enum: ['WithMedicines', 'ConsultationOnly']
+  },
+  finalBillId: { type: mongoose.Schema.Types.ObjectId, ref: 'Billing' }
 }, { 
   timestamps: true,
   toJSON: { getters: true, virtuals: true },
@@ -125,5 +146,16 @@ const appointmentSchema = new mongoose.Schema({
 // Index for faster querying
 appointmentSchema.index({ doctor: 1, date: 1, startTime: 1 }, { unique: true });
 appointmentSchema.index({ patient: 1, date: 1 });
+
+appointmentSchema.plugin(fieldEncryption, {
+  fields: [
+    'prescription',
+    'triage_reason',
+    'aiReasoning',
+    'riskOverrideReason'
+  ],
+  secret: process.env.ENCRYPTION_SECRET,
+  saltGenerator: (secret) => secret.slice(0, 16)
+});
 
 module.exports = mongoose.model('Appointment', appointmentSchema);

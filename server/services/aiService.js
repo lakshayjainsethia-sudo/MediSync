@@ -30,7 +30,9 @@ exports.suggestSymptoms = async (partialInput) => {
     const prompt = `You are a medical assistant. The user typed: '${query}'. Return exactly 6 common medical symptoms that start with or relate to this input. Return ONLY a JSON array of strings. No explanation.`;
     
     const result = await model.generateContent(prompt);
-    const data = JSON.parse(result.response.text());
+    let text = result.response.text();
+    text = text.replace(/```json|```/gi, '').trim();
+    const data = JSON.parse(text);
     
     symptomCache.set(query, { data, timestamp: Date.now() });
     return data;
@@ -72,7 +74,8 @@ Triage tag rules you must follow:
 Symptoms: ${symptoms}`;
 
     const result = await model.generateContent(prompt);
-    const responseText = result.response.text();
+    let responseText = result.response.text();
+    responseText = responseText.replace(/```json|```/gi, '').trim();
     const data = JSON.parse(responseText);
 
     if (

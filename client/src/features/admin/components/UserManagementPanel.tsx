@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { Search, CheckCircle2, Trash2 } from 'lucide-react'
+import { Search, CheckCircle2, Trash2, Edit2, X } from 'lucide-react'
 import Card, { CardContent, CardHeader } from '../../../components/ui/Card'
 import Button from '../../../components/ui/Button'
 import { User } from '../../../types'
@@ -13,6 +13,7 @@ interface UserManagementPanelProps {
   pendingActionIds?: Record<string, boolean>
   onApprove: (userId: string) => Promise<void> | void
   onDelete: (userId: string) => Promise<void> | void
+  onRefresh?: () => void
 }
 
 const ROLE_OPTIONS: Array<{ label: string; value: 'all' | User['role'] }> = [
@@ -26,6 +27,9 @@ const ROLE_OPTIONS: Array<{ label: string; value: 'all' | User['role'] }> = [
 
 const APPROVABLE_ROLES: User['role'][] = ['doctor', 'nurse', 'receptionist', 'pharmacist']
 
+import { adminApi } from '../../../utils/api'
+import { toast } from 'react-toastify'
+
 export default function UserManagementPanel({
   users,
   loading,
@@ -34,11 +38,33 @@ export default function UserManagementPanel({
   onLoadMore,
   pendingActionIds = {},
   onApprove,
-  onDelete
+  onDelete,
+  onRefresh
 }: UserManagementPanelProps) {
   const [search, setSearch] = useState('')
   const [roleFilter, setRoleFilter] = useState<'all' | User['role']>('all')
   const [pendingOnly, setPendingOnly] = useState(false)
+
+  // Edit Doctor Fee State
+  const [editingDoctorId, setEditingDoctorId] = useState<string | null>(null)
+  const [editFee, setEditFee] = useState<string>('')
+  const [isSavingFee, setIsSavingFee] = useState(false)
+
+  const handleSaveFee = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!editingDoctorId) return
+    setIsSavingFee(true)
+    try {
+      await adminApi.updateDoctor(editingDoctorId, { consultationFee: Number(editFee) })
+      toast.success('Consultation fee updated')
+      setEditingDoctorId(null)
+      if (onRefresh) onRefresh()
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || 'Failed to update fee')
+    } finally {
+      setIsSavingFee(false)
+    }
+  }
 
   const filteredUsers = useMemo(() => {
     return users.filter(user => {
@@ -168,6 +194,20 @@ export default function UserManagementPanel({
                           Approve
                         </Button>
                       )}
+                      {user.role === 'doctor' && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="gap-1"
+                          onClick={() => {
+                            setEditingDoctorId(user._id)
+                            setEditFee(user.consultationFee?.toString() || '0')
+                          }}
+                        >
+                          <Edit2 className="h-4 w-4" />
+                          Edit
+                        </Button>
+                      )}
                       <Button
                         size="sm"
                         variant="danger"
@@ -196,6 +236,43 @@ export default function UserManagementPanel({
                 </Button>
               </div>
             )}
+          </div>
+        )}
+
+        {editingDoctorId && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+            <div className="bg-white rounded-lg shadow-xl w-full max-w-md p-6 relative">
+              <button 
+                onClick={() => setEditingDoctorId(null)}
+                className="absolute top-4 right-4 text-gray-400 hover:text-gray-600"
+              >
+                <X className="w-5 h-5" />
+              </button>
+              <h3 className="text-xl font-bold text-slate-900 mb-4">Edit Doctor Profile</h3>
+              <form onSubmit={handleSaveFee} className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Consultation Fee (₹)
+                  </label>
+                  <input
+                    type="number"
+                    value={editFee}
+                    onChange={(e) => setEditFee(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
+                    min="0"
+                    required
+                  />
+                </div>
+                <div className="flex justify-end gap-3 pt-4 border-t border-gray-100">
+                  <Button variant="outline" type="button" onClick={() => setEditingDoctorId(null)}>
+                    Cancel
+                  </Button>
+                  <Button type="submit" isLoading={isSavingFee}>
+                    Save Changes
+                  </Button>
+                </div>
+              </form>
+            </div>
           </div>
         )}
       </CardContent>

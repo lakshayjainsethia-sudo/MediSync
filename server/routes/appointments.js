@@ -7,6 +7,7 @@ const User = require('../models/User');
 const aiService = require('../services/aiService');
 const applyRoleProjection = require('../middleware/applyRoleProjection');
 const { logAudit } = require('../utils/auditLogger');
+const { validateAppointmentInput } = require('../middleware/validate');
 
 // @route   POST /api/appointments
 // @desc    Create a new appointment
@@ -15,6 +16,7 @@ router.post(
   '/',
   [
     protect,
+    validateAppointmentInput,
     [
       check('doctor', 'Doctor ID is required').not().isEmpty(),
       check('date', 'Please include a valid date').isISO8601(),
@@ -128,7 +130,7 @@ router.get(
     try {
       let query = {};
       if (req.user.role === 'doctor') {
-         query.status = { $in: ['scheduled', 'Confirmed', 'Active'] };
+         query.status = { $ne: 'Billing_Pending' };
          query.doctor = req.user.id;
       }
 
@@ -159,7 +161,7 @@ router.get('/me', protect, applyRoleProjection, async (req, res) => {
         .populate('doctor', 'name specialization')
         .sort({ priority: 1, date: -1, startTime: -1 }); // Priority 1 and 2 move to the top
     } else if (req.user.role === 'doctor' || req.user.role === 'Doctor') {
-      appointments = await Appointment.find({ doctor: req.user.id })
+      appointments = await Appointment.find({ doctor: req.user.id, status: { $ne: 'Billing_Pending' } })
         .select(req.fieldProjection)
         .populate('patient', 'name email phone')
         .sort({ riskOverride: -1, weightedScore: -1, createdAt: 1 }); 

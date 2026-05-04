@@ -98,6 +98,7 @@ export const prescriptionsApi = {
 
 export const billingApi = {
   create: (data: any) => api.post('/billing', data),
+  generateFinal: (data: { appointmentId: string; additionalCharges?: any[] }) => api.post('/billing/generate-final', data),
   getMine: () => api.get('/billing/me'),
   getByPatient: (patientId: string) => api.get(`/billing/patient/${patientId}`),
   getById: (id: string) => api.get(`/billing/${id}`),
@@ -117,6 +118,7 @@ export const adminApi = {
   getAnalytics: () => api.get('/admin/analytics'),
   getPendingDoctors: () => api.get('/admin/doctors/pending'),
   approveDoctor: (id: string) => api.put(`/admin/doctors/${id}/approve`),
+  updateDoctor: (id: string, data: any) => api.patch(`/admin/doctors/${id}`, data),
   approveUser: (id: string) => api.put(`/admin/users/${id}/approve`),
   deleteDoctor: (id: string) => api.delete(`/admin/doctors/${id}`),
 
@@ -149,6 +151,10 @@ export const pharmacistApi = {
   getOverview: () => api.get('/pharmacist/overview'),
   getPendingPrescriptions: () => api.get('/pharmacist/prescriptions/pending'),
   dispensePrescription: (id: string, data: { medicinesToDispense: any[] }) => api.patch(`/pharmacist/prescriptions/${id}/dispense`, data),
+  noMedicineHandoff: (id: string) => api.patch(`/pharmacist/prescriptions/${id}/no-medicine`),
   getLowStockMedicines: (threshold?: number) => api.get('/pharmacist/medicines/low-stock', { params: { threshold } }),
   searchMedicines: (q: string) => api.get(`/pharmacist/medicine/search?q=${encodeURIComponent(q)}`)
+}
+export const receptionistApi = {
+  getBillingQueue: () => api.get('/receptionist/billing-queue')
 }

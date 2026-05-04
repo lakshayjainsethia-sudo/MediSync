@@ -10,14 +10,98 @@
 
   // Middleware
   const corsOptions = {
-    origin: ['http://localhost:5173', 'http://localhost:5174', 'http://localhost:5175', 'http://localhost:5176', 'http://127.0.0.1:5173'],
+    origin: process.env.CLIENT_URL || ['http://localhost:5173', 'http://localhost:5174', 'http://localhost:5175', 'http://localhost:5176', 'http://127.0.0.1:5173'],
+    methods: ['GET','POST','PATCH','PUT','DELETE'],
+    allowedHeaders: ['Content-Type','Authorization'],
     credentials: true
   };
   
   app.use(cors(corsOptions));
-  app.use(express.json());
+
+  // 2B. Helmet (HTTP Security Headers)
+  const helmet = require('helmet');
+  app.use(helmet());
+  app.use(helmet.contentSecurityPolicy({
+    directives: {
+      defaultSrc: ["'self'"],
+      scriptSrc:  ["'self'"],
+      styleSrc:   ["'self'", "'unsafe-inline'"],
+      imgSrc:     ["'self'", "data:"],
+      connectSrc: ["'self'"],
+      fontSrc:    ["'self'"],
+      objectSrc:  ["'none'"],
+      frameSrc:   ["'none'"]
+    }
+  }));
+
+  // 2C. NoSQL Injection Prevention
+  const mongoSanitize = require('express-mongo-sanitize');
+  const { logAudit } = require('./utils/auditLogger');
+  app.use(mongoSanitize({
+    replaceWith: '_',
+    onSanitize: ({ req, key }) => {
+      console.warn(`[SECURITY] Sanitized NoSQL injection attempt on key: ${key} from IP: ${req.ip}`);
+      logAudit('INJECTION_ATTEMPT', req, null, 'System', { key, ip: req.ip });
+    }
+  }));
+
+  // 2D. XSS Prevention
+  const xss = require('xss-clean');
+  app.use(xss());
+
+  // 2E. HTTP Parameter Pollution Prevention
+  const hpp = require('hpp');
+  app.use(hpp({
+    whitelist: ['status', 'role', 'category']
+  }));
+
+  // 2G. Request Size Limit
+  app.use(express.json({ limit: '10kb' }));
+  app.use(express.urlencoded({ extended: true, limit: '10kb' }));
+
   app.use(cookieParser());
   app.use(morgan('dev'));
+
+  // 4. SECURITY RESPONSE HEADERS
+  app.use((req, res, next) => {
+    res.removeHeader('X-Powered-By');
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate');
+    res.setHeader('Pragma', 'no-cache');
+    res.setHeader('X-Frame-Options', 'DENY');
+    if (process.env.NODE_ENV === 'production') {
+      res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
+    }
+    next();
+  });
+
+  // 2F. Rate Limiting
+  const rateLimit = require('express-rate-limit');
+  const globalLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    max: 100,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: {
+      status: 429,
+      error: 'Too many requests. Please try again after 15 minutes.'
+    }
+  });
+
+  const authLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    max: 10,
+    message: {
+      status: 429,
+      error: 'Too many login attempts. Please try again after 15 minutes.'
+    },
+    skipSuccessfulRequests: true
+  });
+
+  app.use('/api/', globalLimiter);
+  app.use('/api/auth/login', authLimiter);
+  app.use('/api/auth/register', authLimiter);
+  app.use('/api/auth/refresh', authLimiter);
+
 
   // Proxy to FastAPI Intelligence Engine
   app.use('/api/intelligence', createProxyMiddleware({
@@ -44,6 +128,8 @@
   app.use('/api/ai', aiRoutes);
   app.use('/api/equipment', require('./routes/equipment'));
   app.use('/api/pharmacist', require('./routes/pharmacist'));
+  app.use('/api/medicines', require('./routes/medicines'));
+  app.use('/api/receptionist', require('./routes/receptionist'));
 
   // Error handling middleware
   app.use((err, req, res, next) => {

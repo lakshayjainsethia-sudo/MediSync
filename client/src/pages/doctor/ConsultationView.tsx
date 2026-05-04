@@ -10,6 +10,9 @@ export default function ConsultationView() {
   const navigate = useNavigate();
   
   const [appointment, setAppointment] = useState<any>(null);
+  const [diagnosis, setDiagnosis] = useState('');
+  const [clinicalNotes, setClinicalNotes] = useState('');
+  const [billingSummary, setBillingSummary] = useState('');
   const [prescription, setPrescription] = useState(() => {
     return localStorage.getItem(`prescription_draft_${appointmentId}`) || '';
   });
@@ -33,8 +36,12 @@ export default function ConsultationView() {
   const fetchAppointment = async () => {
     try {
       const res = await api.get(`/appointments/${appointmentId}`);
-      if (res.success || res.data) {
-        setAppointment(res.data || res); 
+      if (res.data) {
+        const apt = res.data;
+        setAppointment(apt);
+        if (apt.diagnosis) setDiagnosis(apt.diagnosis);
+        if (apt.clinicalNotes) setClinicalNotes(apt.clinicalNotes);
+        if (apt.billingSummary) setBillingSummary(apt.billingSummary);
       }
     } catch (err) {
       console.error(err);
@@ -89,7 +96,14 @@ export default function ConsultationView() {
     
     setLoading(true);
     try {
-      await api.patch(`/appointments/${appointmentId}/complete`, { prescription });
+      // Use the comprehensive end-consultation endpoint
+      await api.put(`/appointments/${appointmentId}/end-consultation`, { 
+        diagnosis, 
+        prescription, 
+        clinicalNotes, 
+        billingSummary 
+      });
+      
       localStorage.removeItem(`prescription_draft_${appointmentId}`);
       toast.success('Consultation completed successfully');
       navigate('/doctor/dashboard');
@@ -152,48 +166,87 @@ export default function ConsultationView() {
         </CardContent>
       </Card>
 
-      {/* PANEL B - Prescription Writer */}
+      {/* PANEL B - Prescription & Consultation Details */}
       <Card>
-        <CardHeader title="Prescription & Orders" />
+        <CardHeader title="Consultation Details & Prescription" />
         <CardContent>
-          <div className="relative">
-            <textarea
-              className="w-full font-mono text-sm p-4 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all resize-y min-h-[200px]"
-              placeholder="Enter medications, dosage, lab orders, referrals, or clinical notes..."
-              value={prescription}
-              onChange={(e) => setPrescription(e.target.value)}
-              rows={8}
-            />
-            <div className="absolute bottom-4 right-4 text-xs font-medium text-slate-400 bg-white/80 px-2 py-1 rounded-md backdrop-blur-sm border border-slate-100">
-              {prescription.length} chars | Auto-saves
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1">Diagnosis</label>
+              <input
+                type="text"
+                className="w-full p-3 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
+                placeholder="Primary diagnosis..."
+                value={diagnosis}
+                onChange={(e) => setDiagnosis(e.target.value)}
+              />
             </div>
-          </div>
-          
-          <div className="mt-4">
-            <Button onClick={handleAnalyze} disabled={analyzing} className="bg-indigo-600 hover:bg-indigo-700 text-white">
-              {analyzing ? 'Analyzing...' : 'Analyze Prescription with AI'}
-            </Button>
-          </div>
+            
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1">Prescription & Orders</label>
+              <div className="relative">
+                <textarea
+                  className="w-full font-mono text-sm p-4 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all resize-y min-h-[150px]"
+                  placeholder="Enter medications, dosage, lab orders, or referrals..."
+                  value={prescription}
+                  onChange={(e) => setPrescription(e.target.value)}
+                  rows={6}
+                />
+                <div className="absolute bottom-4 right-4 text-xs font-medium text-slate-400 bg-white/80 px-2 py-1 rounded-md backdrop-blur-sm border border-slate-100">
+                  {prescription.length} chars | Auto-saves
+                </div>
+              </div>
+            </div>
+            
+            <div className="mt-2">
+              <Button onClick={handleAnalyze} disabled={analyzing} className="bg-indigo-600 hover:bg-indigo-700 text-white">
+                {analyzing ? 'Analyzing...' : 'Analyze Prescription with AI'}
+              </Button>
+            </div>
 
-          {analysisBannerMsg && (
-            <div className={`mt-4 p-4 rounded-lg border ${
-              analysisBannerMsg.type === 'success' ? 'bg-green-50 border-green-200 text-green-800' :
-              analysisBannerMsg.type === 'warning' ? 'bg-amber-50 border-amber-200 text-amber-800' :
-              'bg-slate-100 border-slate-200 text-slate-600'
-            }`}>
-              <p className="font-medium">{analysisBannerMsg.msg}</p>
-              {analysisBannerMsg.details && (
-                <ul className="mt-2 text-sm list-disc pl-5">
-                  {analysisBannerMsg.details.map((detail, idx) => <li key={idx}>{detail}</li>)}
-                </ul>
-              )}
+            {analysisBannerMsg && (
+              <div className={`mt-4 p-4 rounded-lg border ${
+                analysisBannerMsg.type === 'success' ? 'bg-green-50 border-green-200 text-green-800' :
+                analysisBannerMsg.type === 'warning' ? 'bg-amber-50 border-amber-200 text-amber-800' :
+                'bg-slate-100 border-slate-200 text-slate-600'
+              }`}>
+                <p className="font-medium">{analysisBannerMsg.msg}</p>
+                {analysisBannerMsg.details && (
+                  <ul className="mt-2 text-sm list-disc pl-5">
+                    {analysisBannerMsg.details.map((detail, idx) => <li key={idx}>{detail}</li>)}
+                  </ul>
+                )}
+              </div>
+            )}
+            {analysisResult && (
+              <div className="mt-2 text-xs text-slate-500 italic">
+                {analysisResult.disclaimer}
+              </div>
+            )}
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4 border-t border-slate-100 mt-4">
+              <div>
+                <label className="block text-sm font-bold text-red-700 mb-1">Clinical Notes (Private)</label>
+                <textarea
+                  value={clinicalNotes}
+                  onChange={(e) => setClinicalNotes(e.target.value)}
+                  rows={3}
+                  className="w-full p-3 bg-red-50 border border-red-200 rounded-lg focus:ring-2 focus:ring-red-500 transition-all"
+                  placeholder="Private doctor notes..."
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-blue-700 mb-1">Billing Summary (Shared)</label>
+                <textarea
+                  value={billingSummary}
+                  onChange={(e) => setBillingSummary(e.target.value)}
+                  rows={3}
+                  className="w-full p-3 bg-blue-50 border border-blue-200 rounded-lg focus:ring-2 focus:ring-blue-500 transition-all"
+                  placeholder="Summary for receptionist/pharmacy..."
+                />
+              </div>
             </div>
-          )}
-          {analysisResult && (
-            <div className="mt-2 text-xs text-slate-500 italic">
-              {analysisResult.disclaimer}
-            </div>
-          )}
+          </div>
         </CardContent>
       </Card>
 
@@ -201,8 +254,8 @@ export default function ConsultationView() {
       <div className="sticky bottom-6 bg-white/80 backdrop-blur-xl p-4 rounded-2xl shadow-xl border border-slate-200/50 flex justify-end">
         <Button
           onClick={handleComplete}
-          disabled={loading}
-          className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-3 rounded-xl font-semibold shadow-lg shadow-blue-500/30 transition-all"
+          disabled={loading || !diagnosis.trim() || !prescription.trim()}
+          className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-3 rounded-xl font-semibold shadow-lg shadow-blue-500/30 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {loading ? 'Processing...' : 'Complete & Hand Off to Reception →'}
         </Button>

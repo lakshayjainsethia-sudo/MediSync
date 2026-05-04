@@ -42,7 +42,9 @@ Note: This is an AI-generated triage suggestion for administrative sorting only,
 Symptoms: ${symptoms}`;
 
     const result = await model.generateContent(prompt);
-    const responseText = result.response.text();
+    let responseText = result.response.text();
+    // Clean markdown formatting if present
+    responseText = responseText.replace(/```json|```/gi, '').trim();
     const data = JSON.parse(responseText);
 
     const triageResult = {
@@ -55,9 +57,8 @@ Symptoms: ${symptoms}`;
 
     res.json(triageResult);
   } catch (error) {
-    console.error('AI Triage Error:', error);
-    res.status(500).json({ 
-      message: 'Error in AI processing.',
+    console.error('AI Triage Error (fallback applied):', error.message);
+    res.json({ 
       aiPriority: "Medium", 
       aiSuggestedDept: "General", 
       aiConfidence: 0, 
@@ -121,12 +122,21 @@ Today is ${new Date().toISOString().split('T')[0]}.
 Return ONLY a JSON array of 3 ISO datetime strings representing the start times of the suggested slots. No additional text.`;
 
     const result = await model.generateContent(prompt);
-    let slots = JSON.parse(result.response.text());
+    let text = result.response.text();
+    // Clean markdown formatting if present
+    text = text.replace(/```json|```/gi, '').trim();
+    let slots = JSON.parse(text);
 
     res.json(slots);
   } catch (error) {
-    console.error('Recommend slot route error:', error);
-    res.status(500).json({ message: 'Server Error' });
+    console.error('Recommend slot route error (fallback applied):', error.message);
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    res.json([
+      new Date(tomorrow.setHours(9, 0, 0, 0)).toISOString(),
+      new Date(tomorrow.setHours(11, 0, 0, 0)).toISOString(),
+      new Date(tomorrow.setHours(14, 0, 0, 0)).toISOString()
+    ]);
   }
 };
 
@@ -159,7 +169,9 @@ Return ONLY a JSON array, no explanation:
 Use Indian Rupee pricing. Max 6 items. Be specific and realistic.`;
 
     const result = await model.generateContent(prompt);
-    const text = result.response.text();
+    let text = result.response.text();
+    // Clean markdown formatting if present
+    text = text.replace(/```json|```/gi, '').trim();
     let data;
     
     try {
@@ -189,8 +201,11 @@ Use Indian Rupee pricing. Max 6 items. Be specific and realistic.`;
     res.json(validItems);
 
   } catch (error) {
-    console.error('Billing suggestions route error:', error);
-    res.status(500).json({ message: 'Server Error generating billing suggestions' });
+    console.error('Billing suggestions route error (fallback applied):', error.message);
+    res.json([
+      { description: 'Consultation Fee', quantity: 1, unitPrice: 500 },
+      { description: 'General Checkup', quantity: 1, unitPrice: 300 }
+    ]);
   }
 };
 

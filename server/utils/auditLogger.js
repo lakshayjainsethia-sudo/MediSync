@@ -7,9 +7,9 @@ const logAudit = async (action, req, targetId, targetModel, metadata = {}) => {
       targetId,
       targetModel,
       metadata,
-      performedBy: req.user.id,
-      role: req.user.role,
-      ip: req.ip || req.connection?.remoteAddress
+      performedBy: req?.user?.id || null,
+      role: req?.user?.role || 'System',
+      ip: req?.ip || req?.connection?.remoteAddress
     });
   } catch (err) {
     // Never throw — audit failure must not break the main flow

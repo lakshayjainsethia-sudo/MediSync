@@ -13,6 +13,7 @@ export default function PharmacistDashboard() {
   const [lowStock, setLowStock] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [activeTab, setActiveTab] = useState<'prescriptions' | 'equipment'>('prescriptions')
+  const [drawerAppointmentId, setDrawerAppointmentId] = useState<string | null>(null)
 
   // Search and Dispense states per appointment
   const [searchQueries, setSearchQueries] = useState<Record<string, string>>({})
@@ -119,8 +120,9 @@ export default function PharmacistDashboard() {
       fetchDashboardData()
     } catch (err: any) {
       if (err.response?.status === 400 && err.response?.data?.message === 'Prescription already dispensed') {
-        toast.error('This prescription was already dispensed.')
-        fetchDashboardData()
+        toast.error('Already dispensed by another pharmacist')
+        setPendingPrescriptions(prev => prev.filter(p => p._id !== id))
+        setDrawerAppointmentId(null)
       } else {
         toast.error(err.response?.data?.message || 'Failed to dispense prescription')
       }
@@ -223,9 +225,6 @@ export default function PharmacistDashboard() {
                         <h3 className="font-bold text-lg text-slate-900">{apt.patient?.name || 'Unknown'}</h3>
                         <p className="text-sm text-slate-500">Dr. {apt.doctor?.name || 'Unknown'} • {new Date(apt.date).toLocaleDateString()}</p>
                       </div>
-                      <Button onClick={() => handleDispense(apt._id)} className="bg-emerald-600 hover:bg-emerald-700 text-white shadow-md">
-                        Confirm Dispense
-                      </Button>
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div>
@@ -235,66 +234,34 @@ export default function PharmacistDashboard() {
                         </div>
                       </div>
                       
-                      <div className="bg-slate-50 rounded-lg p-4 border border-slate-200">
-                        <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2 flex justify-between items-center">
-                          <span>Dispense List</span>
-                        </h4>
-                        
-                        <div className="relative mb-3">
-                          <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                            <Search className="h-4 w-4 text-gray-400" />
-                          </div>
-                          <input
-                            type="text"
-                            placeholder="Search inventory..."
-                            className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md leading-5 bg-white placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-primary-500 focus:border-primary-500 sm:text-sm"
-                            value={searchQueries[apt._id] || ''}
-                            onChange={(e) => handleSearchChange(apt._id, e.target.value)}
-                          />
-                          
-                          {/* Search Results Dropdown */}
-                          {searchResults[apt._id] && searchResults[apt._id].length > 0 && (
-                            <div className="absolute z-10 mt-1 w-full bg-white shadow-lg max-h-48 rounded-md py-1 text-base ring-1 ring-black ring-opacity-5 overflow-auto focus:outline-none sm:text-sm">
-                              {searchResults[apt._id].map(med => (
-                                <div
-                                  key={med._id}
-                                  className="cursor-pointer select-none relative py-2 pl-3 pr-9 hover:bg-slate-100 flex justify-between items-center"
-                                  onClick={() => handleAddToDispenseList(apt._id, med)}
-                                >
-                                  <span className="block truncate font-medium">{med.name}</span>
-                                  <span className={`text-xs ${med.stockQuantity > 0 ? 'text-emerald-600' : 'text-red-600'}`}>Stock: {med.stockQuantity}</span>
-                                </div>
-                              ))}
-                            </div>
-                          )}
-                        </div>
-
-                        <div className="space-y-2">
-                          {(dispenseLists[apt._id] || []).length === 0 ? (
-                            <p className="text-sm text-slate-400 text-center py-4 italic">No items added to dispense.</p>
-                          ) : (
-                            (dispenseLists[apt._id] || []).map((item, idx) => (
-                              <div key={idx} className="flex items-center justify-between bg-white p-2 rounded border border-slate-200 shadow-sm">
-                                <div className="truncate flex-1 mr-2">
-                                  <p className="text-sm font-medium text-slate-800 truncate" title={item.name}>{item.name}</p>
-                                  <p className="text-xs text-slate-500">Stock: {item.currentStock}</p>
-                                </div>
-                                <div className="flex items-center space-x-2">
-                                  <input 
-                                    type="number" 
-                                    min="1" 
-                                    value={item.quantity}
-                                    onChange={(e) => updateQuantity(apt._id, item.medicineId, parseInt(e.target.value) || 1)}
-                                    className="w-16 p-1 text-sm border border-slate-300 rounded text-center"
-                                  />
-                                  <button onClick={() => removeFromDispenseList(apt._id, item.medicineId)} className="text-red-500 hover:text-red-700 p-1 bg-red-50 rounded">
-                                    <Trash2 className="h-4 w-4" />
-                                  </button>
-                                </div>
-                              </div>
-                            ))
-                          )}
-                        </div>
+                      <div className="mt-4 flex flex-col sm:flex-row justify-end gap-2">
+                        <Button 
+                          variant="outline"
+                          size="sm"
+                          className="border-blue-500 text-blue-600 hover:bg-blue-50"
+                          onClick={() => setDrawerAppointmentId(apt._id)}
+                        >
+                          <Plus className="h-4 w-4 mr-1" /> Add from Dispensary
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="text-gray-500 hover:bg-gray-100 hover:text-gray-700 text-xs"
+                          onClick={() => {
+                            if (window.confirm("Mark this consultation as medicine-free and send directly to receptionist for billing?")) {
+                              pharmacistApi.noMedicineHandoff(apt._id)
+                                .then(() => {
+                                  toast.success("Sent to receptionist for billing.");
+                                  fetchDashboardData();
+                                })
+                                .catch(err => {
+                                  toast.error(err.response?.data?.message || "Failed to send");
+                                });
+                            }
+                          }}
+                        >
+                          No medicines prescribed — Send directly to billing
+                        </Button>
                       </div>
                     </div>
                   </Card>
@@ -336,6 +303,123 @@ export default function PharmacistDashboard() {
         )}
 
       </div>
+
+      {/* Drawer */}
+      {drawerAppointmentId && (
+        <div className="fixed inset-0 z-50 overflow-hidden" aria-labelledby="slide-over-title" role="dialog" aria-modal="true">
+          <div className="absolute inset-0 overflow-hidden">
+            <div className="absolute inset-0 bg-gray-500 bg-opacity-75 transition-opacity" aria-hidden="true" onClick={() => setDrawerAppointmentId(null)}></div>
+            <div className="pointer-events-none fixed inset-y-0 right-0 flex max-w-full pl-10">
+              <div className="pointer-events-auto w-screen max-w-md">
+                <div className="flex h-full flex-col overflow-y-scroll bg-white shadow-xl">
+                  {(() => {
+                    const apt = pendingPrescriptions.find(p => p._id === drawerAppointmentId);
+                    if (!apt) return null;
+                    return (
+                      <>
+                        <div className="bg-primary-50 px-4 py-6 sm:px-6 border-b border-primary-100">
+                          <div className="flex items-center justify-between">
+                            <h2 className="text-lg font-bold text-slate-900" id="slide-over-title">Add Medicine — {apt.patient?.name}'s Prescription</h2>
+                            <div className="ml-3 flex h-7 items-center">
+                              <button
+                                type="button"
+                                className="rounded-md text-slate-400 hover:text-slate-500 focus:outline-none"
+                                onClick={() => setDrawerAppointmentId(null)}
+                              >
+                                <span className="sr-only">Close panel</span>
+                                <span className="text-2xl">&times;</span>
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                        <div className="relative mt-6 flex-1 px-4 sm:px-6">
+                          <div className="relative mb-4">
+                            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                              <Search className="h-4 w-4 text-gray-400" />
+                            </div>
+                            <input
+                              type="text"
+                              placeholder="Search medicine..."
+                              className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md leading-5 bg-white placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-primary-500 focus:border-primary-500 sm:text-sm"
+                              value={searchQueries[apt._id] || ''}
+                              onChange={(e) => handleSearchChange(apt._id, e.target.value)}
+                            />
+                            {/* Search Results Dropdown */}
+                            {searchResults[apt._id] && searchResults[apt._id].length > 0 && (
+                              <div className="absolute z-10 mt-1 w-full bg-white shadow-lg max-h-60 rounded-md py-1 text-base ring-1 ring-black ring-opacity-5 overflow-auto focus:outline-none sm:text-sm">
+                                {searchResults[apt._id].map(med => (
+                                  <div
+                                    key={med._id}
+                                    className="relative py-2 pl-3 pr-3 hover:bg-slate-100 flex justify-between items-center"
+                                  >
+                                    <div>
+                                      <span className="block font-medium">{med.name}</span>
+                                      <span className={`text-xs ${med.stockQuantity > 0 ? 'text-emerald-600' : 'text-red-600'}`}>Stock: {med.stockQuantity}</span>
+                                    </div>
+                                    <Button 
+                                      size="sm" 
+                                      variant="outline"
+                                      className="py-1 px-2 h-auto text-xs"
+                                      onClick={() => handleAddToDispenseList(apt._id, med)}
+                                    >
+                                      Add
+                                    </Button>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+
+                          <div className="mt-8">
+                            <h4 className="text-sm font-bold text-slate-900 mb-3 border-b pb-2">To Dispense</h4>
+                            <div className="space-y-3">
+                              {(dispenseLists[apt._id] || []).length === 0 ? (
+                                <p className="text-sm text-slate-400 italic">No medicines added yet.</p>
+                              ) : (
+                                (dispenseLists[apt._id] || []).map((item, idx) => (
+                                  <div key={idx} className="flex items-center justify-between bg-slate-50 p-3 rounded-lg border border-slate-200 shadow-sm">
+                                    <div className="truncate flex-1 mr-2">
+                                      <p className="text-sm font-medium text-slate-800 truncate">{item.name}</p>
+                                      <p className="text-xs text-slate-500">Stock: {item.currentStock}</p>
+                                    </div>
+                                    <div className="flex items-center space-x-3">
+                                      <input 
+                                        type="number" 
+                                        min="1" 
+                                        max={item.currentStock}
+                                        value={item.quantity}
+                                        onChange={(e) => updateQuantity(apt._id, item.medicineId, parseInt(e.target.value) || 1)}
+                                        className="w-16 p-1 text-sm border border-slate-300 rounded text-center"
+                                      />
+                                      <button onClick={() => removeFromDispenseList(apt._id, item.medicineId)} className="text-red-500 hover:text-red-700 p-1 bg-red-50 rounded">
+                                        <Trash2 className="h-4 w-4" />
+                                      </button>
+                                    </div>
+                                  </div>
+                                ))
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                        <div className="border-t border-gray-200 px-4 py-4 sm:px-6">
+                          <Button 
+                            className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3"
+                            onClick={() => {
+                              handleDispense(apt._id);
+                            }}
+                          >
+                            Confirm Dispense
+                          </Button>
+                        </div>
+                      </>
+                    );
+                  })()}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
