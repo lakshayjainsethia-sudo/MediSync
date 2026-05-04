@@ -1,7 +1,7 @@
 // migrate-encrypt.js (run once: node migrate-encrypt.js)
+require('dotenv').config();
 const mongoose = require('mongoose');
 const Appointment = require('./models/Appointment.js');
-require('dotenv').config();
 
 async function migrate() {
   try {
