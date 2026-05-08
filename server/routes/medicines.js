@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const Medicine = require('../models/Medicine');
+const Notification = require('../models/Notification');
 const { protect } = require('../middleware/auth');
 const { authorizeRoles } = require('../middleware/roleCheck');
 const { logAudit } = require('../utils/auditLogger');
@@ -96,6 +97,81 @@ router.get('/:id', async (req, res) => {
     res.json(medicine);
   } catch (error) {
     console.error('Error fetching medicine:', error);
+    res.status(500).json({ message: 'Server Error' });
+  }
+});
+
+// @route   POST /api/medicines
+// @desc    Add new medicine
+router.post('/', authorizeRoles('Admin', 'admin'), async (req, res) => {
+  try {
+    const newMedicine = new Medicine(req.body);
+    const savedMedicine = await newMedicine.save();
+    
+    await logAudit('MEDICINE_CREATED', req, savedMedicine._id, 'Medicine', { name: savedMedicine.name });
+    
+    res.status(201).json(savedMedicine);
+  } catch (error) {
+    console.error('Error adding medicine:', error);
+    res.status(500).json({ message: 'Server Error' });
+  }
+});
+
+// @route   PUT /api/medicines/:id
+// @desc    Update existing medicine
+router.put('/:id', authorizeRoles('Admin', 'admin', 'Pharmacist', 'pharmacist'), async (req, res) => {
+  try {
+    const oldMedicine = await Medicine.findById(req.params.id);
+    if (!oldMedicine) return res.status(404).json({ message: 'Medicine not found' });
+
+    const medicine = await Medicine.findByIdAndUpdate(req.params.id, req.body, { new: true });
+
+    // Check if stock fell below threshold and trigger alert
+    if (req.body.stockQuantity !== undefined && req.body.stockQuantity <= medicine.minimumThreshold && oldMedicine.stockQuantity > medicine.minimumThreshold) {
+      // 1. Save alert in DB
+      const notification = new Notification({
+        recipient: null, // Global or admin specific
+        recipientModel: 'User',
+        type: 'alert',
+        title: 'Low Stock Alert',
+        message: `${medicine.name} stock has fallen to ${medicine.stockQuantity}.`,
+        link: '/admin/inventory'
+      });
+      await notification.save();
+
+      // 2. Emit to socket
+      const io = req.app.get('io');
+      if (io) {
+        io.to('admins').emit('low_stock_alert', {
+          medicineId: medicine._id,
+          medicineName: medicine.name,
+          currentStock: medicine.stockQuantity,
+          minimumThreshold: medicine.minimumThreshold
+        });
+      }
+    }
+
+    await logAudit('MEDICINE_UPDATED', req, medicine._id, 'Medicine', { changes: req.body });
+    
+    res.json(medicine);
+  } catch (error) {
+    console.error('Error updating medicine:', error);
+    res.status(500).json({ message: 'Server Error' });
+  }
+});
+
+// @route   DELETE /api/medicines/:id
+// @desc    Delete medicine
+router.delete('/:id', authorizeRoles('Admin', 'admin'), async (req, res) => {
+  try {
+    const medicine = await Medicine.findByIdAndDelete(req.params.id);
+    if (!medicine) return res.status(404).json({ message: 'Medicine not found' });
+    
+    await logAudit('MEDICINE_DELETED', req, req.params.id, 'Medicine', { name: medicine.name });
+    
+    res.json({ message: 'Medicine removed' });
+  } catch (error) {
+    console.error('Error deleting medicine:', error);
     res.status(500).json({ message: 'Server Error' });
   }
 });

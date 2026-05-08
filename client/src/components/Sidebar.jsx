@@ -8,7 +8,8 @@ import {
   DocumentTextIcon,
   QueueListIcon,
   HeartIcon,
-  BeakerIcon
+  BeakerIcon,
+  ArchiveBoxIcon
 } from '@heroicons/react/24/outline';
 
 /**
@@ -24,6 +25,7 @@ const Sidebar = () => {
     admin: [
       { name: 'Dashboard', path: '/admin/dashboard', icon: HomeIcon },
       { name: 'Blood Bank', path: '/admin/blood-inventory', icon: HeartIcon },
+      { name: 'Inventory', path: '/admin/inventory', icon: ArchiveBoxIcon },
       { name: 'Live Queue', path: '/live-queue', icon: QueueListIcon },
       { name: 'Manage Users', path: '/admin/users', icon: UsersIcon },
       { name: 'Billing', path: '/billing', icon: CurrencyDollarIcon },
@@ -40,7 +42,8 @@ const Sidebar = () => {
     ],
     pharmacist: [
       { name: 'Dashboard', path: '/pharmacist/dashboard', icon: HomeIcon },
-      { name: 'Dispensary', path: '/pharmacist/dispensary', icon: BeakerIcon }
+      { name: 'Dispensary', path: '/pharmacist/dispensary', icon: BeakerIcon },
+      { name: 'Inventory', path: '/admin/inventory', icon: ArchiveBoxIcon }
     ],
     // Add Patient arrays as needed...
   };

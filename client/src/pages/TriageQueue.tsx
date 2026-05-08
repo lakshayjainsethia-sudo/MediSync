@@ -7,7 +7,6 @@ import { format } from 'date-fns'
 import { io } from 'socket.io-client'
 import { toast } from 'react-toastify'
 
-import axios from 'axios'
 
 export default function TriageQueue() {
   const [appointments, setAppointments] = useState<Appointment[]>([])
@@ -89,10 +88,10 @@ export default function TriageQueue() {
 
     try {
       // 3. API Call
-      await axios.patch(`http://localhost:5000/api/appointments/${id}/risk-override`, {
+      await appointmentsApi.overrideRisk(id, {
         riskOverride,
         riskOverrideReason
-      }, { withCredentials: true });
+      });
       toast.success(riskOverride ? 'Emergency Confirmed. Doctor Notified.' : 'Emergency Flag Removed');
     } catch (err) {
       // 4. Rollback on failure

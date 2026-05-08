@@ -22,6 +22,12 @@ const medicineSchema = new mongoose.Schema({
     required: true,
     trim: true
   },
+  manufacturer: {
+    type: String
+  },
+  batchNumber: {
+    type: String
+  },
   minimumThreshold: {
     type: Number,
     required: true,

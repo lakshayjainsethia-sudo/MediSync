@@ -152,6 +152,7 @@
   app.use('/api/v1/pharmacist', require('./routes/pharmacist'));
   app.use('/api/v1/medicines', require('./routes/medicines'));
   app.use('/api/v1/receptionist', require('./routes/receptionist'));
+  app.use('/api/v1/external', require('./routes/external'));
 
   // Error handling middleware
   const globalErrorHandler = require('./middleware/errorHandler');

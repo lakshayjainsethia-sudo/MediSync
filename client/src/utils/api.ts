@@ -77,6 +77,7 @@ export const appointmentsApi = {
   endConsultation: (id: string, data: { diagnosis?: string; prescription?: string; clinicalNotes?: string; billingSummary?: string }) => api.put(`/appointments/${id}/end-consultation`, data),
   completeReview: (id: string, data: { status: 'completed'; billingSummary?: string }) => api.put(`/appointments/${id}/complete-review`, data),
   getAvailableSlots: (doctorId: string, date: string) => api.get(`/appointments/available-slots?doctorId=${doctorId}&date=${date}`),
+  overrideRisk: (id: string, data: { riskOverride: boolean; riskOverrideReason?: string }) => api.patch(`/appointments/${id}/risk-override`, data),
 }
 
 export const medicalRecordsApi = {

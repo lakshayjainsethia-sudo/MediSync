@@ -44,7 +44,7 @@ export default function PharmacyManager() {
       // We will need to add it to api.ts and backend.
       // For now, I'll mock the api call using fetch.
       const token = localStorage.getItem('token')
-      const res = await fetch(`/api/pharmacist/medicine/${editingMed._id}`, {
+      const res = await fetch(`/api/v1/pharmacist/medicine/${editingMed._id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',

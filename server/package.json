@@ -9,10 +9,12 @@
     "dev": "nodemon server.js",
     "create-admin": "node scripts/createAdmin.js",
     "seed": "node scripts/seedDemoData.js",
+    "seed:inventory": "node scripts/seedInventory.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "dependencies": {
     "@google/generative-ai": "^0.24.1",
+    "axios": "^1.16.0",
     "bcryptjs": "^2.4.3",
     "cookie-parser": "^1.4.6",
     "cors": "^2.8.6",

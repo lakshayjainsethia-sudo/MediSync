@@ -114,6 +114,63 @@ router.patch('/:id', protect, authorize('admin', 'pharmacist'), async (req, res)
   }
 });
 
+// @route   PUT /api/equipment/:id
+// @desc    Update equipment (full update)
+// @access  Protected (admin)
+router.put('/:id', protect, authorize('admin'), async (req, res) => {
+  try {
+    let equipment = await Equipment.findById(req.params.id);
+    if (!equipment) {
+      return res.status(404).json({ message: 'Equipment not found' });
+    }
+
+    const prevStatus = equipment.status;
+    const { status } = req.body;
+
+    equipment = await Equipment.findByIdAndUpdate(req.params.id, req.body, { new: true });
+
+    // Emit Socket.io if status changed to Maintenance
+    if (status && status === 'Maintenance' && prevStatus !== 'Maintenance') {
+      const io = req.app.get('io');
+      if (io) {
+        io.to('pharmacists').emit('equipment_maintenance_alert', {
+          equipmentId: equipment._id,
+          name: equipment.name,
+          unit: equipment.unit,
+          nextMaintenanceDate: equipment.nextMaintenanceDate
+        });
+      }
+    }
+
+    await logAudit('EQUIPMENT_UPDATED_FULL', req, equipment._id, 'Equipment', { changes: req.body });
+
+    res.json(equipment);
+  } catch (err) {
+    console.error(err.message);
+    res.status(500).send('Server Error');
+  }
+});
+
+// @route   DELETE /api/equipment/:id
+// @desc    Delete equipment
+// @access  Protected (admin)
+router.delete('/:id', protect, authorize('admin'), async (req, res) => {
+  try {
+    const equipment = await Equipment.findByIdAndDelete(req.params.id);
+    if (!equipment) {
+      return res.status(404).json({ message: 'Equipment not found' });
+    }
+
+    await logAudit('EQUIPMENT_DELETED', req, req.params.id, 'Equipment', { name: equipment.name });
+
+    res.json({ message: 'Equipment removed' });
+  } catch (err) {
+    console.error(err.message);
+    res.status(500).send('Server Error');
+  }
+});
+
+
 // @route   POST /api/equipment/:id/maintenance-log
 // @desc    Add maintenance log
 // @access  Protected (admin)

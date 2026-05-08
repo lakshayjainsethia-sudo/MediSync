@@ -13,6 +13,7 @@ import StaffDashboard from './pages/StaffDashboard'
 import ReceptionistDashboard from './pages/ReceptionistDashboard'
 import AdminDashboard from './pages/AdminDashboard'
 import AdminUsers from './pages/AdminUsers'
+import InventoryDashboard from './pages/InventoryDashboard'
 import Home from './pages/Home'
 import MedicalRecords from './pages/MedicalRecords'
 import Prescriptions from './pages/Prescriptions'
@@ -138,6 +139,14 @@ function AppRoutes() {
         element={
           <PrivateRoute allowedRoles={['admin']}>
             <AdminUsers />
+          </PrivateRoute>
+        }
+      />
+      <Route
+        path="/admin/inventory"
+        element={
+          <PrivateRoute allowedRoles={['admin', 'pharmacist']}>
+            <InventoryDashboard />
           </PrivateRoute>
         }
       />

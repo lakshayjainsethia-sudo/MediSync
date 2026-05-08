@@ -21,7 +21,7 @@ export const AdminAnalytics: React.FC = () => {
     if (isRefresh) setLoading(true);
     try {
       // Unified query using $facet natively on Backend
-      const response = await axios.get('http://localhost:5000/api/admin/dashboard-stats', { withCredentials: true });
+      const response = await axios.get('http://localhost:5000/api/v1/admin/dashboard-stats', { withCredentials: true });
       setStats(response.data);
       setLastUpdated(new Date());
     } catch (err) {

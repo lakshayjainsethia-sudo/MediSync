@@ -494,7 +494,7 @@ router.patch(
         if (io) {
           io.emit('emergency_update', {
             appointmentId: appointment._id,
-            patientName: appointment.patient.name,
+            patientName: appointment.patient?.name || 'Unknown Patient',
             reason: appointment.riskOverrideReason,
             aiPriorityScore: appointment.aiPriorityScore
           });

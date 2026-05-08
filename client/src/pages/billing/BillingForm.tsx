@@ -29,7 +29,7 @@ export default function BillingForm({ onBack }: { onBack: () => void }) {
 
   useEffect(() => {
     // Fetch recent scheduled and completed appointments
-    axios.get('http://localhost:5000/api/appointments', { withCredentials: true })
+    axios.get('http://localhost:5000/api/v1/appointments', { withCredentials: true })
       .then(res => setAppointments(res.data))
       .catch(err => console.error("Could not fetch appointments", err));
   }, []);
@@ -71,7 +71,7 @@ export default function BillingForm({ onBack }: { onBack: () => void }) {
 
     try {
       setSaving(true);
-      await axios.post('http://localhost:5000/api/billing', {
+      await axios.post('http://localhost:5000/api/v1/billing', {
         appointment: selectedAptId,
         lineItems,
         discount,
@@ -96,7 +96,7 @@ export default function BillingForm({ onBack }: { onBack: () => void }) {
 
     setAiLoading(true);
     try {
-      const res = await axios.post('http://localhost:5000/api/ai/billing-suggest', {
+      const res = await axios.post('http://localhost:5000/api/v1/ai/billing-suggest', {
         symptoms: selectedApt.symptoms,
         aiSuggestedDept: selectedApt.aiSuggestedDept,
         aiPriority: selectedApt.aiPriority,
@@ -154,7 +154,7 @@ export default function BillingForm({ onBack }: { onBack: () => void }) {
 
     setAuditLoading(true);
     try {
-      const res = await axios.post('http://localhost:5000/api/ai/billing-audit', {
+      const res = await axios.post('http://localhost:5000/api/v1/ai/billing-audit', {
         treatmentSummary: selectedApt.symptoms,
         items: lineItems,
         patientHistory: 'Standard patient record',

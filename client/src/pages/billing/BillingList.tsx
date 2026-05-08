@@ -17,7 +17,7 @@ export default function BillingList() {
   const fetchBills = async () => {
     try {
       setLoading(true);
-      const res = await axios.get(`http://localhost:5000/api/billing?status=${statusFilter}`, {
+      const res = await axios.get(`http://localhost:5000/api/v1/billing?status=${statusFilter}`, {
         withCredentials: true
       });
       setBills(res.data);
@@ -43,7 +43,7 @@ export default function BillingList() {
     setPaymentModal(null);
 
     try {
-      await axios.patch(`http://localhost:5000/api/billing/${paymentModal.id}/status`, {
+      await axios.patch(`http://localhost:5000/api/v1/billing/${paymentModal.id}/status`, {
         status: 'Paid',
         paymentMethod: paymentModal.method
       }, { withCredentials: true });

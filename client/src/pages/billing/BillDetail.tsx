@@ -16,7 +16,7 @@ export default function BillDetail() {
   useEffect(() => {
     const fetchBill = async () => {
       try {
-        const res = await axios.get(`http://localhost:5000/api/billing/${id}`, { withCredentials: true });
+        const res = await axios.get(`http://localhost:5000/api/v1/billing/${id}`, { withCredentials: true });
         setBill(res.data);
       } catch (err) {
         console.error('Failed to fetch bill details', err);
