@@ -69,6 +69,11 @@ router.post(
       await billing.populate('doctor', 'name specialization');
       await billing.populate('appointment', 'date');
 
+      const io = req.app.get('io');
+      if (io) {
+        io.to('admins').emit('dashboard_update');
+      }
+
       res.status(201).json(billing);
     } catch (err) {
       console.error(err.message);
@@ -193,6 +198,7 @@ router.post('/generate-final', [authorize('admin', 'receptionist')], async (req,
         totalAmount,
         patientName: patient ? patient.name : 'Unknown Patient'
       });
+      io.to('admins').emit('dashboard_update');
     }
 
     await logAudit('FINAL_BILL_GENERATED', req, newBill._id, 'Billing', {
@@ -359,6 +365,10 @@ router.patch('/:id/status', [
 
     if (status === 'Paid') {
       await logAudit('BILL_PAID', req, bill._id, 'Billing', { paymentMethod, totalAmount: bill.totalAmount });
+      const io = req.app.get('io');
+      if (io) {
+        io.to('admins').emit('dashboard_update');
+      }
     }
 
     res.json(bill);

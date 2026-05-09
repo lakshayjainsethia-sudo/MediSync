@@ -89,7 +89,8 @@ exports.searchMedicines = async (req, res, next) => {
   try {
     const { q } = req.query;
     if (!q) {
-      return res.status(200).json({ success: true, data: [] });
+      const medicines = await Medicine.find().limit(50).sort({ name: 1 });
+      return res.status(200).json({ success: true, data: medicines });
     }
     
     const medicines = await Medicine.find({

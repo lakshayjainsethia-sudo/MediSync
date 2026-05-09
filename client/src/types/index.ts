@@ -19,6 +19,8 @@ export interface User {
     startTime: string
     endTime: string
   }
+  averageRating?: number
+  totalRatings?: number
   createdAt?: string
   updatedAt?: string
 }
@@ -55,6 +57,8 @@ export interface Appointment {
   aiRedFlags?: string[]
   riskOverride?: boolean
   pulse?: boolean
+  rating?: number
+  review?: string
   createdAt?: string
   updatedAt?: string
 }

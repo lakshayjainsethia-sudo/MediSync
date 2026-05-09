@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import axios from 'axios';
+import { appointmentsApi, billingApi, aiApi } from '../../utils/api';
 import { Plus, Trash2, Save, Send, Sparkles, CheckSquare, Square, X } from 'lucide-react';
 import { toast } from 'react-toastify';
 import { format } from 'date-fns';
@@ -29,7 +29,7 @@ export default function BillingForm({ onBack }: { onBack: () => void }) {
 
   useEffect(() => {
     // Fetch recent scheduled and completed appointments
-    axios.get('http://localhost:5000/api/v1/appointments', { withCredentials: true })
+    appointmentsApi.getAll()
       .then(res => setAppointments(res.data))
       .catch(err => console.error("Could not fetch appointments", err));
   }, []);
@@ -71,7 +71,7 @@ export default function BillingForm({ onBack }: { onBack: () => void }) {
 
     try {
       setSaving(true);
-      await axios.post('http://localhost:5000/api/v1/billing', {
+      await billingApi.create({
         appointment: selectedAptId,
         lineItems,
         discount,
@@ -79,7 +79,7 @@ export default function BillingForm({ onBack }: { onBack: () => void }) {
         paymentMethod,
         notes,
         status // Draft or Unpaid
-      }, { withCredentials: true });
+      });
 
       toast.success(`Bill successfully saved as ${status}`);
       onBack();
@@ -96,12 +96,12 @@ export default function BillingForm({ onBack }: { onBack: () => void }) {
 
     setAiLoading(true);
     try {
-      const res = await axios.post('http://localhost:5000/api/v1/ai/billing-suggest', {
+      const res = await aiApi.suggestBilling({
         symptoms: selectedApt.symptoms,
         aiSuggestedDept: selectedApt.aiSuggestedDept,
         aiPriority: selectedApt.aiPriority,
         doctorSpecialisation: selectedApt.doctor?.specialization
-      }, { withCredentials: true });
+      });
 
       const data = res.data;
       // Front-end validation safety check
@@ -154,12 +154,12 @@ export default function BillingForm({ onBack }: { onBack: () => void }) {
 
     setAuditLoading(true);
     try {
-      const res = await axios.post('http://localhost:5000/api/v1/ai/billing-audit', {
+      const res = await aiApi.auditBilling({
         treatmentSummary: selectedApt.symptoms,
         items: lineItems,
         patientHistory: 'Standard patient record',
         totalBillSize: totalAmount
-      }, { withCredentials: true });
+      });
 
       setAuditReport(res.data);
     } catch (err) {

@@ -124,7 +124,7 @@ export default function Doctors() {
                     {doctor.consultationFee && (
                       <div className="flex items-center justify-between text-sm">
                         <span className="text-slate-600">Consultation Fee:</span>
-                        <span className="font-semibold text-slate-900">${doctor.consultationFee}</span>
+                        <span className="font-semibold text-slate-900">₹{doctor.consultationFee}</span>
                       </div>
                     )}
                     {doctor.phone && (

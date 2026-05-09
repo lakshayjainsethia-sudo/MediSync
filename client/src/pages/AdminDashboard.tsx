@@ -1,5 +1,6 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { toast } from 'react-toastify'
+import { io } from 'socket.io-client'
 import { useAuth } from '../context/AuthContext'
 import { adminApi } from '../utils/api'
 import Card from '../components/ui/Card'
@@ -7,6 +8,8 @@ import { useAdminDashboard } from '../features/admin/hooks/useAdminDashboard'
 import StatsOverview from '../features/admin/components/StatsOverview'
 import AppointmentsInsights from '../features/admin/components/AppointmentsInsights'
 import RevenueInsights from '../features/admin/components/RevenueInsights'
+import { User } from '../types'
+import { Star } from 'lucide-react'
 
 import UserManagementPanel from '../features/admin/components/UserManagementPanel'
 import EquipmentManager from '../features/admin/components/EquipmentManager'
@@ -19,6 +22,43 @@ export default function AdminDashboard() {
   const { analytics, users, loading, error, refetchAnalytics, refetchUsers } = useAdminDashboard()
   const [pendingActionIds, setPendingActionIds] = useState<Record<string, boolean>>({})
   const [activeTab, setActiveTab] = useState<TabType>('analytics')
+  const [topDoctors, setTopDoctors] = useState<User[]>([])
+
+  useEffect(() => {
+    fetchTopDoctors()
+  }, [])
+
+  const fetchTopDoctors = async () => {
+    try {
+      const { doctorsApi } = await import('../utils/api')
+      const response = await doctorsApi.getTop()
+      setTopDoctors(response.data)
+    } catch (error) {
+      console.error('Failed to fetch top doctors', error)
+    }
+  }
+
+  useEffect(() => {
+    if (user && user.role === 'admin') {
+      const socket = io('http://localhost:5000', { withCredentials: true });
+      
+      socket.on('connect', () => {
+        // Connected
+      });
+
+      socket.on('low_stock_alert', (data) => {
+        toast.warning(`Low Stock Alert: ${data.name} is down to ${data.currentStock} units!`);
+      });
+
+      socket.on('dashboard_update', () => {
+        refetchAnalytics();
+      });
+
+      return () => {
+        socket.disconnect();
+      };
+    }
+  }, [user]);
 
   if (!user || user.role !== 'admin') {
     return (
@@ -153,6 +193,40 @@ export default function AdminDashboard() {
                 breakdownData={analytics.revenueBreakdown}
                 userDistribution={analytics.userDistribution}
               />
+            </div>
+            
+            <div className="mt-6">
+              <Card>
+                <div className="px-6 py-4 border-b border-gray-200 bg-amber-50/50">
+                  <div className="flex items-center space-x-2">
+                    <Star className="h-5 w-5 text-amber-500 fill-current" />
+                    <h2 className="text-xl font-semibold text-slate-900">Top Rated Doctors</h2>
+                  </div>
+                </div>
+                <div className="divide-y divide-gray-100">
+                  {topDoctors.length === 0 ? (
+                    <div className="p-6 text-center text-gray-500 text-sm">
+                      No ratings available yet.
+                    </div>
+                  ) : (
+                    topDoctors.map(doc => (
+                      <div key={doc._id} className="p-4 hover:bg-slate-50 transition flex items-center justify-between">
+                        <div>
+                          <h3 className="font-semibold text-slate-900">Dr. {doc.name}</h3>
+                          <p className="text-xs text-slate-500">{doc.specialization}</p>
+                        </div>
+                        <div className="flex flex-col items-end">
+                          <div className="flex items-center text-amber-500">
+                            <Star className="h-4 w-4 fill-current" />
+                            <span className="ml-1 font-bold">{doc.averageRating?.toFixed(1) || '5.0'}</span>
+                          </div>
+                          <span className="text-xs text-slate-400">{doc.totalRatings} reviews</span>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </Card>
             </div>
           </>
         ) : (

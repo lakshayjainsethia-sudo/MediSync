@@ -45,9 +45,10 @@ export default function UserManagementPanel({
   const [roleFilter, setRoleFilter] = useState<'all' | User['role']>('all')
   const [pendingOnly, setPendingOnly] = useState(false)
 
-  // Edit Doctor Fee State
+  // Edit Doctor State
   const [editingDoctorId, setEditingDoctorId] = useState<string | null>(null)
   const [editFee, setEditFee] = useState<string>('')
+  const [editSpecialization, setEditSpecialization] = useState<string>('')
   const [isSavingFee, setIsSavingFee] = useState(false)
 
   const handleSaveFee = async (e: React.FormEvent) => {
@@ -55,8 +56,11 @@ export default function UserManagementPanel({
     if (!editingDoctorId) return
     setIsSavingFee(true)
     try {
-      await adminApi.updateDoctor(editingDoctorId, { consultationFee: Number(editFee) })
-      toast.success('Consultation fee updated')
+      await adminApi.updateDoctor(editingDoctorId, { 
+        consultationFee: Number(editFee),
+        specialization: editSpecialization 
+      })
+      toast.success('Doctor profile updated')
       setEditingDoctorId(null)
       if (onRefresh) onRefresh()
     } catch (err: any) {
@@ -202,6 +206,7 @@ export default function UserManagementPanel({
                           onClick={() => {
                             setEditingDoctorId(user._id)
                             setEditFee(user.consultationFee?.toString() || '0')
+                            setEditSpecialization(user.specialization || '')
                           }}
                         >
                           <Edit2 className="h-4 w-4" />
@@ -250,6 +255,18 @@ export default function UserManagementPanel({
               </button>
               <h3 className="text-xl font-bold text-slate-900 mb-4">Edit Doctor Profile</h3>
               <form onSubmit={handleSaveFee} className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Specialization
+                  </label>
+                  <input
+                    type="text"
+                    value={editSpecialization}
+                    onChange={(e) => setEditSpecialization(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
+                    placeholder="e.g. Cardiologist"
+                  />
+                </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     Consultation Fee (₹)

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
+import { adminApi } from '../../utils/api';
 import { 
   Users, RefreshCw, BarChart2, TrendingUp, AlertTriangle, ShieldCheck
 } from 'lucide-react';
@@ -21,7 +21,7 @@ export const AdminAnalytics: React.FC = () => {
     if (isRefresh) setLoading(true);
     try {
       // Unified query using $facet natively on Backend
-      const response = await axios.get('http://localhost:5000/api/v1/admin/dashboard-stats', { withCredentials: true });
+      const response = await adminApi.getDashboardStats();
       setStats(response.data);
       setLastUpdated(new Date());
     } catch (err) {

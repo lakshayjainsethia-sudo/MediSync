@@ -132,9 +132,10 @@ router.put('/users/:id/approve', async (req, res) => {
 // @access  Private (Admin only)
 router.patch('/doctors/:id', async (req, res) => {
   try {
-    const { consultationFee } = req.body;
+    const { consultationFee, specialization } = req.body;
     const updateFields = {};
     if (consultationFee !== undefined) updateFields.consultationFee = Number(consultationFee);
+    if (specialization !== undefined) updateFields.specialization = specialization;
 
     const doctor = await User.findOneAndUpdate(
       { _id: req.params.id, role: 'doctor' },
@@ -272,7 +273,8 @@ router.get('/analytics', async (req, res) => {
       revenueResult,
       statusDist,
       trendDist,
-      triageDist
+      triageDist,
+      revenueTrend
     ] = await Promise.all([
       User.countDocuments({ role: 'patient' }),
       User.countDocuments({ role: 'doctor', isApproved: true }),
@@ -300,6 +302,18 @@ router.get('/analytics', async (req, res) => {
       ]),
       Appointment.aggregate([
         { $group: { _id: { $ifNull: ['$aiPriority', 'Normal'] }, count: { $sum: 1 } } }
+      ]),
+      Billing.aggregate([
+        { $match: { status: 'Paid', createdAt: { $gte: thirtyDaysAgo } } },
+        {
+          $group: {
+            _id: {
+              $dateToString: { format: "%Y-%m-%d", date: "$createdAt", timezone: "Asia/Kolkata" }
+            },
+            total: { $sum: '$totalAmount' }
+          }
+        },
+        { $sort: { _id: 1 } }
       ])
     ]);
 
@@ -314,7 +328,8 @@ router.get('/analytics', async (req, res) => {
       revenue,
       appointmentsByStatus: statusDist,
       appointmentsByDay: trendDist,
-      triageDistribution: triageDist
+      triageDistribution: triageDist,
+      revenueTrend
     });
   } catch (err) {
     console.error('Analytics Endpoint Error:', err.message);

@@ -151,7 +151,7 @@ billingSchema.pre('save', async function(next) {
 });
 
 billingSchema.index({ patient: 1, createdAt: -1 });
-billingSchema.index({ invoiceNumber: 1 });
+
 billingSchema.index({ paymentStatus: 1 });
 
 module.exports = mongoose.model('Billing', billingSchema);

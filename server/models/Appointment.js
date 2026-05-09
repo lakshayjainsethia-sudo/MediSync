@@ -41,6 +41,14 @@ const appointmentSchema = new mongoose.Schema({
     type: String,
     default: ''
   },
+  rating: {
+    type: Number,
+    min: 1,
+    max: 5
+  },
+  review: {
+    type: String
+  },
   symptoms: {
     type: mongoose.Schema.Types.Mixed,
     default: '',
@@ -113,6 +121,35 @@ const appointmentSchema = new mongoose.Schema({
   },
   riskOverrideAt: { 
     type: Date 
+  },
+  assignedNurse: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    default: null
+  },
+  nurseNotes: [
+    {
+      note: { type: String },
+      vitals: {
+        bloodPressure: { type: String },
+        heartRate: { type: Number },
+        temperature: { type: Number },
+        oxygenSat: { type: Number },
+        weight: { type: Number },
+        height: { type: Number }
+      },
+      recordedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+      recordedAt: { type: Date, default: Date.now }
+    }
+  ],
+  triageOverride: {
+    updatedTag: {
+      type: String,
+      enum: ['RED', 'ORANGE', 'GREEN']
+    },
+    updatedReason: { type: String },
+    updatedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+    updatedAt: { type: Date }
   },
   dispensed: { type: Boolean, default: false },
   dispensedAt: { type: Date },

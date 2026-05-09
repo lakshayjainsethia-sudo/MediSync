@@ -3,6 +3,7 @@ const permissions = {
   doctor: ['read:patients', 'write:medical-records', 'read:appointments', 'write:appointments', 'read:billing'],
   receptionist: ['read:patients', 'read:appointments', 'write:appointments', 'read:billing', 'write:billing'],
   pharmacist: ['read:prescriptions', 'read:equipment', 'write:dispense'],
+  nurse: ['read:appointments', 'read:triage', 'write:triage', 'write:vitals', 'read:patients'],
   patient: ['read:own_records', 'read:own_appointments', 'write:own_appointments', 'read:own_billing']
 };
 

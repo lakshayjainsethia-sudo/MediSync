@@ -3,7 +3,7 @@ import { toast } from 'react-toastify'
 import { RegisterableRole } from '../types'
 
 const api = axios.create({
-  baseURL: '/api',
+  baseURL: '/api/v1',
   withCredentials: true,
   headers: {
     'Content-Type': 'application/json',
@@ -33,7 +33,7 @@ api.interceptors.response.use(
       localStorage.removeItem('user')
       window.location.href = '/login'
     }
-    const message = error.response?.data?.message || error.message || 'An error occurred'
+    const message = error.response?.data?.message || error.response?.data?.error || error.message || 'An error occurred'
     if (error.response?.status !== 401) {
       toast.error(message)
     }
@@ -49,10 +49,12 @@ export const authApi = {
   register: (data: { name: string; email: string; password: string; role: RegisterableRole }) => api.post('/auth/register', data),
   getMe: () => api.get('/auth/me'),
   logout: () => api.post('/auth/logout'),
+  updatePassword: (data: any) => api.put('/auth/update-password', data),
 }
 
 export const doctorsApi = {
   getAll: () => api.get('/doctors'),
+  getTop: () => api.get('/doctors/top'),
   getById: (id: string) => api.get(`/doctors/${id}`),
   getMyAppointments: () => api.get('/doctors/me/appointments'),
   updateProfile: (data: any) => api.put('/doctors/me', data),
@@ -78,6 +80,7 @@ export const appointmentsApi = {
   completeReview: (id: string, data: { status: 'completed'; billingSummary?: string }) => api.put(`/appointments/${id}/complete-review`, data),
   getAvailableSlots: (doctorId: string, date: string) => api.get(`/appointments/available-slots?doctorId=${doctorId}&date=${date}`),
   overrideRisk: (id: string, data: { riskOverride: boolean; riskOverrideReason?: string }) => api.patch(`/appointments/${id}/risk-override`, data),
+  rateAppointment: (id: string, data: { rating: number; review?: string }) => api.post(`/appointments/${id}/rate`, data),
 }
 
 export const medicalRecordsApi = {
@@ -98,6 +101,7 @@ export const prescriptionsApi = {
 }
 
 export const billingApi = {
+  getAll: (params?: { status?: string }) => api.get('/billing', { params }),
   create: (data: any) => api.post('/billing', data),
   generateFinal: (data: { appointmentId: string; additionalCharges?: any[] }) => api.post('/billing/generate-final', data),
   getMine: () => api.get('/billing/me'),
@@ -105,6 +109,7 @@ export const billingApi = {
   getById: (id: string) => api.get(`/billing/${id}`),
   recordPayment: (id: string, data: any) => api.put(`/billing/${id}/payment`, data),
   update: (id: string, data: any) => api.put(`/billing/${id}`, data),
+  updateStatus: (id: string, data: any) => api.patch(`/billing/${id}/status`, data),
 }
 
 export const notificationsApi = {
@@ -117,6 +122,7 @@ export const notificationsApi = {
 
 export const adminApi = {
   getAnalytics: () => api.get('/admin/analytics'),
+  getDashboardStats: () => api.get('/admin/dashboard-stats'),
   getPendingDoctors: () => api.get('/admin/doctors/pending'),
   approveDoctor: (id: string) => api.put(`/admin/doctors/${id}/approve`),
   updateDoctor: (id: string, data: any) => api.patch(`/admin/doctors/${id}`, data),
@@ -145,7 +151,9 @@ export const equipmentApi = {
 export const aiApi = {
   predictMaintenance: (id: string) => api.get(`/ai/predict-maintenance/${id}`),
   analyzePrescription: (data: any) => api.post('/ai/analyze-prescription', data),
-  suggestSymptoms: (query: string) => api.get(`/ai/symptom-suggest?q=${encodeURIComponent(query)}`)
+  suggestSymptoms: (query: string) => api.get(`/ai/symptom-suggest?q=${encodeURIComponent(query)}`),
+  suggestBilling: (data: any) => api.post('/ai/billing-suggest', data),
+  auditBilling: (data: any) => api.post('/ai/billing-audit', data)
 }
 
 export const pharmacistApi = {
@@ -154,7 +162,10 @@ export const pharmacistApi = {
   dispensePrescription: (id: string, data: { medicinesToDispense: any[] }) => api.patch(`/pharmacist/prescriptions/${id}/dispense`, data),
   noMedicineHandoff: (id: string) => api.patch(`/pharmacist/prescriptions/${id}/no-medicine`),
   getLowStockMedicines: (threshold?: number) => api.get('/pharmacist/medicines/low-stock', { params: { threshold } }),
-  searchMedicines: (q: string) => api.get(`/pharmacist/medicine/search?q=${encodeURIComponent(q)}`)
+  searchMedicines: (q: string) => api.get(`/pharmacist/medicine/search?q=${encodeURIComponent(q)}`),
+  seedMedicines: () => api.post('/medicines/seed'),
+  createMedicine: (data: any) => api.post('/medicines', data),
+  updateMedicine: (id: string, data: any) => api.put(`/medicines/${id}`, data)
 }
 export const receptionistApi = {
   getBillingQueue: () => api.get('/receptionist/billing-queue')

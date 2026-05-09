@@ -13,8 +13,8 @@
 
   const corsOptions = {
     origin: process.env.CLIENT_URL || ['http://localhost:5173', 'http://localhost:5174', 'http://localhost:5175', 'http://localhost:5176', 'http://127.0.0.1:5173'],
-    methods: ['GET','POST','PATCH','PUT','DELETE'],
-    allowedHeaders: ['Content-Type','Authorization','X-CSRF-Token'],
+    methods: ['GET','POST','PATCH','PUT','DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type','Authorization','X-CSRF-Token','X-XSRF-TOKEN', 'x-xsrf-token', 'x-csrf-token'],
     credentials: true
   };
   
@@ -153,6 +153,8 @@
   app.use('/api/v1/medicines', require('./routes/medicines'));
   app.use('/api/v1/receptionist', require('./routes/receptionist'));
   app.use('/api/v1/external', require('./routes/external'));
+  app.use('/api/v1/users', require('./routes/users'));
+  app.use('/api/v1/nurse', require('./routes/nurse'));
 
   // Error handling middleware
   const globalErrorHandler = require('./middleware/errorHandler');
@@ -188,7 +190,7 @@
 
   io.on('connection', (socket) => {
     if (socket.user && socket.user.role) {
-      const room = `${socket.user.role}s`; // e.g., 'doctors', 'receptionists'
+      const room = `${socket.user.role.toLowerCase()}s`; // e.g., 'doctors', 'receptionists'
       socket.join(room);
     }
     socket.on('disconnect', () => {

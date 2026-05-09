@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
+import { billingApi } from '../../utils/api';
 import { Plus, Search, Eye, IndianRupee, Printer } from 'lucide-react';
 import { format } from 'date-fns';
 import { toast } from 'react-toastify';
@@ -17,9 +17,7 @@ export default function BillingList() {
   const fetchBills = async () => {
     try {
       setLoading(true);
-      const res = await axios.get(`http://localhost:5000/api/v1/billing?status=${statusFilter}`, {
-        withCredentials: true
-      });
+      const res = await billingApi.getAll({ status: statusFilter });
       setBills(res.data);
     } catch (err) {
       console.error('Failed to fetch bills', err);
@@ -43,10 +41,10 @@ export default function BillingList() {
     setPaymentModal(null);
 
     try {
-      await axios.patch(`http://localhost:5000/api/v1/billing/${paymentModal.id}/status`, {
+      await billingApi.updateStatus(paymentModal.id, {
         status: 'Paid',
         paymentMethod: paymentModal.method
-      }, { withCredentials: true });
+      });
       toast.success('Payment recorded successfully');
     } catch (err) {
       console.error('Failed to mark paid', err);

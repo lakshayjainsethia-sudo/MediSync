@@ -6,10 +6,32 @@ const { protect } = require('../middleware/auth');
 const { authorizeRoles } = require('../middleware/roleCheck');
 const { logAudit } = require('../utils/auditLogger');
 const mongoose = require('mongoose');
+const { exec } = require('child_process');
+const path = require('path');
 
 // Protect all routes
 router.use(protect);
 router.use(authorizeRoles('Pharmacist', 'Admin', 'pharmacist', 'admin'));
+
+// @route   POST /api/medicines/seed
+// @desc    Run medicine seed script
+router.post('/seed', authorizeRoles('Admin', 'admin'), async (req, res) => {
+  try {
+    const scriptPath = path.join(__dirname, '../scripts/seedMedicines.js');
+    exec(`node ${scriptPath}`, (error, stdout, stderr) => {
+      if (error) {
+        console.error(`Seed error: ${error}`);
+        return res.status(500).json({ message: 'Seed failed', details: error.message });
+      }
+      if (stdout.includes('already exist')) {
+         return res.status(400).json({ message: 'Medicines already exist. Clear DB first.' });
+      }
+      res.json({ message: 'Seed script executed successfully', output: stdout });
+    });
+  } catch (error) {
+    res.status(500).json({ message: 'Server Error' });
+  }
+});
 
 // @route   GET /api/medicines
 // @desc    Get all medicines with filters, search, pagination

@@ -110,6 +110,11 @@ router.post(
         }
       }
       
+      const io = req.app.get('io');
+      if (io) {
+        io.to('admins').emit('dashboard_update');
+      }
+
       res.status(201).json(appointment);
     } catch (err) {
       console.error(err.message);
@@ -121,11 +126,11 @@ router.post(
 const { z } = require('zod');
 
 // @route   GET /api/appointments
-// @desc    Get all appointments (Admin, Receptionist, Pharmacist, Doctor)
+// @desc    Get all appointments (Admin, Receptionist, Pharmacist, Doctor, Nurse)
 // @access  Private
 router.get(
   '/',
-  [protect, authorize('admin', 'receptionist', 'pharmacist', 'doctor'), applyRoleProjection],
+  [protect, authorize('admin', 'receptionist', 'pharmacist', 'doctor', 'nurse'), applyRoleProjection],
   async (req, res) => {
     try {
       let query = {};
@@ -427,7 +432,7 @@ router.put(
         throw new Error('Not authorized');
       }
 
-      appointment.status = 'completed';
+      appointment.status = 'Billing_Pending';
       appointment.clinicalNotes = clinicalNotes || '';
       appointment.billingSummary = billingSummary || '';
       appointment.diagnosis = diagnosis || '';
@@ -436,13 +441,24 @@ router.put(
       await appointment.save();
       
       const io = req.app.get('io');
-      if (io && prescription && prescription.trim().length > 0) {
-        io.to('pharmacists').emit('new_prescription', {
+      if (io) {
+        // Notify receptionists for billing
+        io.to('receptionists').emit('handoff_received', {
           appointmentId: appointment._id,
-          patientName: appointment.patient && appointment.patient.name ? appointment.patient.name : 'Unknown Patient',
+          patientName: appointment.patient?.name || 'Unknown Patient',
           doctorName: req.user.name,
           prescription
         });
+
+        // Notify pharmacists if there is a prescription
+        if (prescription && prescription.trim().length > 0) {
+          io.to('pharmacists').emit('new_prescription', {
+            appointmentId: appointment._id,
+            patientName: appointment.patient?.name || 'Unknown Patient',
+            doctorName: req.user.name,
+            prescription
+          });
+        }
       }
       
       res.json(appointment);
@@ -459,10 +475,10 @@ router.put(
 
 // @route   PATCH /api/appointments/:id/risk-override
 // @desc    Manually override and flag appointment risk
-// @access  Private (Receptionist, Admin)
+// @access  Private (Receptionist, Admin, Nurse)
 router.patch(
   '/:id/risk-override',
-  [protect, authorize('receptionist', 'admin')],
+  [protect, authorize('receptionist', 'admin', 'nurse')],
   async (req, res) => {
     try {
       const { riskOverride, riskOverrideReason } = req.body;
@@ -504,6 +520,155 @@ router.patch(
       res.json(appointment);
     } catch (err) {
       console.error(err.message);
+      res.status(500).send('Server Error');
+    }
+  }
+);
+
+// @route   PATCH /api/appointments/:id/assign-nurse
+// @desc    Assign a nurse to an appointment
+// @access  Private (Doctor, Admin)
+router.patch(
+  '/:id/assign-nurse',
+  [protect, authorize('doctor', 'admin')],
+  async (req, res) => {
+    try {
+      const { nurseId } = req.body;
+      const appointment = await Appointment.findById(req.params.id).populate('patient', 'name');
+
+      if (!appointment) {
+        return res.status(404).json({ message: 'Appointment not found' });
+      }
+
+      if (req.user.role === 'doctor' && appointment.doctor.toString() !== req.user.id) {
+        return res.status(403).json({ message: 'Not authorized to assign nurse to this appointment' });
+      }
+
+      const nurse = await User.findOne({ _id: nurseId, role: { $regex: /^nurse$/i } });
+      if (!nurse) {
+        return res.status(400).json({ message: 'Invalid nurse selection' });
+      }
+
+      appointment.assignedNurse = nurseId;
+      await appointment.save();
+
+      await logAudit('NURSE_ASSIGNED', req, appointment._id, 'Appointment', { nurseId, nurseName: nurse.name });
+
+      const io = req.app.get('io');
+      if (io) {
+        io.to('nurses').emit('patient_assigned', {
+          appointmentId: appointment._id,
+          patientName: appointment.patient?.name || 'Unknown',
+          doctorName: req.user.name,
+          triage_tag: appointment.triage_tag,
+          weightedScore: appointment.weightedScore,
+          assignedAt: Date.now()
+        });
+      }
+
+      res.json(appointment);
+    } catch (err) {
+      console.error(err.message);
+      res.status(500).send('Server Error');
+    }
+  }
+);
+
+// @route   PATCH /api/appointments/:id/unassign-nurse
+// @desc    Unassign a nurse from an appointment
+// @access  Private (Doctor, Admin)
+router.patch(
+  '/:id/unassign-nurse',
+  [protect, authorize('doctor', 'admin')],
+  async (req, res) => {
+    try {
+      const appointment = await Appointment.findById(req.params.id);
+
+      if (!appointment) {
+        return res.status(404).json({ message: 'Appointment not found' });
+      }
+
+      if (req.user.role === 'doctor' && appointment.doctor.toString() !== req.user.id) {
+        return res.status(403).json({ message: 'Not authorized to unassign nurse from this appointment' });
+      }
+
+      appointment.assignedNurse = null;
+      await appointment.save();
+
+      await logAudit('NURSE_UNASSIGNED', req, appointment._id, 'Appointment', {});
+
+      const io = req.app.get('io');
+      if (io) {
+        io.to('nurses').emit('patient_unassigned', {
+          appointmentId: appointment._id
+        });
+      }
+
+      res.json(appointment);
+    } catch (err) {
+      console.error(err.message);
+      res.status(500).send('Server Error');
+    }
+  }
+);
+
+// @route   POST /api/appointments/:id/rate
+// @desc    Rate a completed appointment
+// @access  Private (Patient only)
+router.post(
+  '/:id/rate',
+  [
+    protect,
+    authorize('patient'),
+    [
+      check('rating', 'Rating is required and must be between 1 and 5').isInt({ min: 1, max: 5 })
+    ]
+  ],
+  async (req, res) => {
+    try {
+      const { rating, review } = req.body;
+      const appointment = await Appointment.findById(req.params.id);
+
+      if (!appointment) {
+        return res.status(404).json({ message: 'Appointment not found' });
+      }
+
+      // Check if user owns appointment
+      if (appointment.patient.toString() !== req.user.id) {
+        return res.status(401).json({ message: 'Not authorized to rate this appointment' });
+      }
+
+      // Check if already rated
+      if (appointment.rating) {
+        return res.status(400).json({ message: 'Appointment already rated' });
+      }
+
+      // Check if completed
+      if (appointment.status !== 'completed') {
+        return res.status(400).json({ message: 'Only completed appointments can be rated' });
+      }
+
+      appointment.rating = rating;
+      if (review) appointment.review = review;
+      await appointment.save();
+
+      // Update doctor rating stats
+      const doctor = await User.findById(appointment.doctor);
+      if (doctor) {
+        const newTotalRatings = doctor.totalRatings + 1;
+        const newAverageRating = ((doctor.averageRating * doctor.totalRatings) + rating) / newTotalRatings;
+        
+        doctor.totalRatings = newTotalRatings;
+        doctor.averageRating = newAverageRating;
+        await doctor.save();
+      }
+
+      res.json(appointment);
+    } catch (err) {
+      console.error(err.message);
+      if (err.kind === 'ObjectId') {
+        return res.status(404).json({ message: 'Appointment not found' });
+      }
       res.status(500).send('Server Error');
     }
   }

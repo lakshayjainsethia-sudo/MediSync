@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import axios from 'axios';
+import { billingApi } from '../../utils/api';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Printer, Download, ArrowLeft, HeartPulse, CheckCircle } from 'lucide-react';
 import { format } from 'date-fns';
@@ -16,7 +16,7 @@ export default function BillDetail() {
   useEffect(() => {
     const fetchBill = async () => {
       try {
-        const res = await axios.get(`http://localhost:5000/api/v1/billing/${id}`, { withCredentials: true });
+        const res = await billingApi.getById(id as string);
         setBill(res.data);
       } catch (err) {
         console.error('Failed to fetch bill details', err);

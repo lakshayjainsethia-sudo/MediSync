@@ -27,6 +27,12 @@ const csrfProtection = (req, res, next) => {
     return next();
   }
 
+  // 2.5 Skip CSRF validation for login and register as they establish the session
+  const EXCLUDED_ROUTES = ['/api/v1/auth/login', '/api/v1/auth/register', '/api/v1/admin/setup'];
+  if (EXCLUDED_ROUTES.includes(req.originalUrl) || EXCLUDED_ROUTES.includes(req.path)) {
+    return next();
+  }
+
   // 3. Double Submit Cookie Validation
   const cookieSecret = req.cookies.csrfSecret;
   const headerToken = req.headers['x-csrf-token'] || req.headers['x-xsrf-token'];

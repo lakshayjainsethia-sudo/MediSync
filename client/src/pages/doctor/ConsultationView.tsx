@@ -22,8 +22,14 @@ export default function ConsultationView() {
   const [showHighRiskModal, setShowHighRiskModal] = useState(false);
   const [analysisBannerMsg, setAnalysisBannerMsg] = useState<{type: 'success' | 'warning' | 'error' | 'info', msg: string, details?: any[]} | null>(null);
 
+  const [nurses, setNurses] = useState<any[]>([]);
+  const [fetchingNurses, setFetchingNurses] = useState(false);
+  const [selectedNurseId, setSelectedNurseId] = useState('');
+  const [assigningNurse, setAssigningNurse] = useState(false);
+
   useEffect(() => {
     fetchAppointment();
+    fetchNurses();
   }, [appointmentId]);
 
   useEffect(() => {
@@ -46,6 +52,47 @@ export default function ConsultationView() {
     } catch (err) {
       console.error(err);
       toast.error('Failed to load appointment');
+    }
+  };
+
+  const fetchNurses = async () => {
+    try {
+      setFetchingNurses(true);
+      const res = await api.get('/users/nurses');
+      setNurses(res.data.data);
+    } catch (err) {
+      console.error('Failed to fetch nurses', err);
+    } finally {
+      setFetchingNurses(false);
+    }
+  };
+
+  const handleAssignNurse = async () => {
+    if (!selectedNurseId) return;
+    try {
+      setAssigningNurse(true);
+      const res = await api.patch(`/appointments/${appointmentId}/assign-nurse`, { nurseId: selectedNurseId });
+      setAppointment(res.data);
+      toast.success('Nurse assigned successfully');
+    } catch (err) {
+      console.error(err);
+      toast.error('Failed to assign nurse');
+    } finally {
+      setAssigningNurse(false);
+    }
+  };
+
+  const handleUnassignNurse = async () => {
+    try {
+      setAssigningNurse(true);
+      const res = await api.patch(`/appointments/${appointmentId}/unassign-nurse`);
+      setAppointment(res.data);
+      toast.success('Nurse unassigned successfully');
+    } catch (err) {
+      console.error(err);
+      toast.error('Failed to unassign nurse');
+    } finally {
+      setAssigningNurse(false);
     }
   };
 
@@ -162,6 +209,46 @@ export default function ConsultationView() {
                 ))}
               </div>
             )}
+
+            <div className="pt-4 mt-4 border-t border-slate-100">
+              <h4 className="text-sm font-bold text-slate-800 mb-3">Nursing Assignment</h4>
+              {appointment.assignedNurse ? (
+                <div className="flex items-center gap-4 bg-blue-50/50 p-3 rounded-lg border border-blue-100">
+                  <span className="font-medium text-blue-900 flex items-center gap-2">
+                    👩‍⚕️ Assigned to: {appointment.assignedNurse?.name || 'Nurse'}
+                  </span>
+                  <button 
+                    onClick={handleUnassignNurse}
+                    disabled={assigningNurse}
+                    className="text-xs font-semibold text-red-600 hover:text-red-800 px-3 py-1 bg-white rounded-md border border-red-200 shadow-sm transition"
+                  >
+                    Remove Assignment
+                  </button>
+                </div>
+              ) : (
+                <div className="flex items-center gap-3">
+                  <select
+                    className="bg-slate-50 border border-slate-200 text-slate-700 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 max-w-xs"
+                    value={selectedNurseId}
+                    onChange={(e) => setSelectedNurseId(e.target.value)}
+                    disabled={fetchingNurses || assigningNurse}
+                  >
+                    <option value="">{fetchingNurses ? 'Loading nurses...' : (nurses.length === 0 ? 'No nurses available' : 'Select a nurse...')}</option>
+                    {nurses.map(nurse => (
+                      <option key={nurse._id} value={nurse._id}>{nurse.name}</option>
+                    ))}
+                  </select>
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={handleAssignNurse}
+                    disabled={!selectedNurseId || assigningNurse}
+                  >
+                    {assigningNurse ? 'Assigning...' : 'Assign'}
+                  </Button>
+                </div>
+              )}
+            </div>
           </div>
         </CardContent>
       </Card>

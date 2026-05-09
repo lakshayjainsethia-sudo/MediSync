@@ -73,6 +73,26 @@ export default function DoctorDashboard() {
       toast.info(`💊 Prescription dispensed for ${data.patientName}`, { autoClose: 4000 })
     })
 
+    socket.on('vitals_updated', (data) => {
+      toast.info(`📋 Vitals recorded for ${data.patientName} by Nurse ${data.nurseName}`, { autoClose: 5000 })
+    })
+
+    socket.on('triage_escalated', (data) => {
+      toast.error(`🚨 EMERGENCY ESCALATION: Patient ${data.patientName} was escalated to RED by ${data.escalatedBy}. Reason: ${data.reason}`, { autoClose: 15000 })
+      setAppointments(prev => {
+        const updated = prev.map(a => 
+          a._id === data.appointmentId 
+            ? { ...a, triage_tag: 'RED' as 'RED', pulse: true } 
+            : a
+        )
+        return updated.sort((a: any, b: any) => {
+          if (a.riskOverride && !b.riskOverride) return -1;
+          if (!a.riskOverride && b.riskOverride) return 1;
+          return (b.weightedScore || 0) - (a.weightedScore || 0);
+        })
+      })
+    })
+
     return () => {
       socket.disconnect()
     }

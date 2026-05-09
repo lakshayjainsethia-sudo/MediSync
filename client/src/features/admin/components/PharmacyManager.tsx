@@ -15,6 +15,10 @@ export default function PharmacyManager() {
   const [editPrice, setEditPrice] = useState<string>('')
   const [editThreshold, setEditThreshold] = useState<string>('')
   const [isSaving, setIsSaving] = useState(false)
+  
+  // Add State
+  const [showAddForm, setShowAddForm] = useState(false)
+  const [newMed, setNewMed] = useState({ name: '', category: 'General', price: '', stockQuantity: '', unit: 'mg', minimumThreshold: '', expiryDate: '' })
 
   useEffect(() => {
     fetchMedicines()
@@ -37,32 +41,37 @@ export default function PharmacyManager() {
     if (!editingMed) return
     setIsSaving(true)
     try {
-      // We don't have an admin edit medicine route explicitly in the prompt, 
-      // but we can use the existing updateMedicineStock or similar if we modify it, 
-      // or we can just send a PUT to /api/pharmacist/medicine/:id.
-      // Wait, let's check pharmacistApi from api.ts. It doesn't have update medicine.
-      // We will need to add it to api.ts and backend.
-      // For now, I'll mock the api call using fetch.
-      const token = localStorage.getItem('token')
-      const res = await fetch(`/api/v1/pharmacist/medicine/${editingMed._id}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({ 
-          price: Number(editPrice), 
-          minimumThreshold: Number(editThreshold) 
-        })
+      await pharmacistApi.updateMedicine(editingMed._id, {
+        price: Number(editPrice), 
+        minimumThreshold: Number(editThreshold) 
       })
-      
-      if (!res.ok) throw new Error('Failed to update')
       
       toast.success('Medicine updated successfully')
       setEditingMed(null)
       fetchMedicines()
     } catch (err: any) {
       toast.error(err.message || 'Failed to update medicine')
+    } finally {
+      setIsSaving(false)
+    }
+  }
+
+  const handleCreate = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setIsSaving(true)
+    try {
+      await pharmacistApi.createMedicine({
+        ...newMed,
+        price: Number(newMed.price),
+        stockQuantity: Number(newMed.stockQuantity),
+        minimumThreshold: Number(newMed.minimumThreshold)
+      })
+      toast.success('Medicine added successfully')
+      setShowAddForm(false)
+      setNewMed({ name: '', category: 'General', price: '', stockQuantity: '', unit: 'mg', minimumThreshold: '', expiryDate: '' })
+      fetchMedicines()
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || 'Failed to create medicine')
     } finally {
       setIsSaving(false)
     }
@@ -76,15 +85,20 @@ export default function PharmacyManager() {
         title="Pharmacy Inventory & Pricing"
         subtitle="Manage medicine catalog, prices, and low-stock thresholds."
         action={
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-            <input
-              type="text"
-              placeholder="Search medicines..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="w-full sm:w-64 pl-9 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
-            />
+          <div className="flex items-center">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+              <input
+                type="text"
+                placeholder="Search medicines..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="w-full sm:w-64 pl-9 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
+              />
+            </div>
+            <Button onClick={() => setShowAddForm(true)} className="ml-3 bg-primary-600 hover:bg-primary-700 text-white flex items-center gap-1">
+              <Plus size={16} /> Medicine
+            </Button>
           </div>
         }
       />
@@ -181,6 +195,104 @@ export default function PharmacyManager() {
                   </Button>
                   <Button type="submit" isLoading={isSaving}>
                     Save Changes
+                  </Button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+
+        {showAddForm && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+            <div className="bg-white rounded-lg shadow-xl w-full max-w-md p-6 relative">
+              <button 
+                onClick={() => setShowAddForm(false)}
+                className="absolute top-4 right-4 text-gray-400 hover:text-gray-600"
+              >
+                <X className="w-5 h-5" />
+              </button>
+              <h3 className="text-xl font-bold text-slate-900 mb-4">Add New Medicine</h3>
+              <form onSubmit={handleCreate} className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Name</label>
+                  <input
+                    type="text"
+                    value={newMed.name}
+                    onChange={(e) => setNewMed({...newMed, name: e.target.value})}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
+                    required
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Category</label>
+                    <input
+                      type="text"
+                      value={newMed.category}
+                      onChange={(e) => setNewMed({...newMed, category: e.target.value})}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Unit (mg, ml, etc)</label>
+                    <input
+                      type="text"
+                      value={newMed.unit}
+                      onChange={(e) => setNewMed({...newMed, unit: e.target.value})}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
+                      required
+                    />
+                  </div>
+                </div>
+                <div className="grid grid-cols-3 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Price (₹)</label>
+                    <input
+                      type="number"
+                      value={newMed.price}
+                      onChange={(e) => setNewMed({...newMed, price: e.target.value})}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
+                      min="0" required
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Init Stock</label>
+                    <input
+                      type="number"
+                      value={newMed.stockQuantity}
+                      onChange={(e) => setNewMed({...newMed, stockQuantity: e.target.value})}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
+                      min="0" required
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Min Alert</label>
+                    <input
+                      type="number"
+                      value={newMed.minimumThreshold}
+                      onChange={(e) => setNewMed({...newMed, minimumThreshold: e.target.value})}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
+                      min="0" required
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Expiry Date</label>
+                  <input
+                    type="date"
+                    value={newMed.expiryDate}
+                    onChange={(e) => setNewMed({...newMed, expiryDate: e.target.value})}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
+                    required
+                  />
+                </div>
+                <div className="flex justify-end gap-3 pt-4 border-t border-gray-100">
+                  <Button variant="outline" type="button" onClick={() => setShowAddForm(false)}>
+                    Cancel
+                  </Button>
+                  <Button type="submit" isLoading={isSaving}>
+                    Add Medicine
                   </Button>
                 </div>
               </form>

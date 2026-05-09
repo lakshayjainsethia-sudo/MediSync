@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useAuth } from '../context/AuthContext'
-import { patientsApi, doctorsApi } from '../utils/api'
+import { patientsApi, doctorsApi, authApi } from '../utils/api'
 import { toast } from 'react-toastify'
 import { User, Mail, Phone, Calendar, Edit, Save, X } from 'lucide-react'
 import Card, { CardHeader, CardContent } from '../components/ui/Card'
@@ -16,6 +16,13 @@ export default function Profile() {
     email: user?.email || '',
     phone: user?.phone || '',
   })
+
+  const [passwordData, setPasswordData] = useState({
+    currentPassword: '',
+    newPassword: '',
+    confirmPassword: ''
+  })
+  const [passwordLoading, setPasswordLoading] = useState(false)
 
   useEffect(() => {
     if (user) {
@@ -54,6 +61,41 @@ export default function Profile() {
       toast.error('Failed to update profile')
     } finally {
       setLoading(false)
+    }
+  }
+
+  const handlePasswordChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setPasswordData({
+      ...passwordData,
+      [e.target.name]: e.target.value
+    })
+  }
+
+  const handlePasswordSave = async () => {
+    if (passwordData.newPassword !== passwordData.confirmPassword) {
+      toast.error('New passwords do not match')
+      return
+    }
+    
+    if (passwordData.newPassword.length < 6) {
+      toast.error('New password must be at least 6 characters long')
+      return
+    }
+
+    try {
+      setPasswordLoading(true)
+      await authApi.updatePassword({
+        currentPassword: passwordData.currentPassword,
+        newPassword: passwordData.newPassword
+      })
+      
+      toast.success('Password updated successfully')
+      setPasswordData({ currentPassword: '', newPassword: '', confirmPassword: '' })
+    } catch (error: any) {
+      console.error('Failed to update password:', error)
+      toast.error(error.response?.data?.message || 'Failed to update password')
+    } finally {
+      setPasswordLoading(false)
     }
   }
 
@@ -166,6 +208,48 @@ export default function Profile() {
                     <p className="text-slate-900">{user.experience} years</p>
                   </div>
                 )}
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Security Card */}
+          <Card className="lg:col-span-3 mt-6">
+            <CardHeader title="Security Settings" />
+            <CardContent>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                <Input
+                  label="Current Password"
+                  name="currentPassword"
+                  type="password"
+                  value={passwordData.currentPassword}
+                  onChange={handlePasswordChange}
+                  placeholder="Enter current password"
+                />
+                <Input
+                  label="New Password"
+                  name="newPassword"
+                  type="password"
+                  value={passwordData.newPassword}
+                  onChange={handlePasswordChange}
+                  placeholder="Enter new password"
+                />
+                <Input
+                  label="Confirm New Password"
+                  name="confirmPassword"
+                  type="password"
+                  value={passwordData.confirmPassword}
+                  onChange={handlePasswordChange}
+                  placeholder="Confirm new password"
+                />
+              </div>
+              <div className="flex justify-end">
+                <Button 
+                  onClick={handlePasswordSave} 
+                  isLoading={passwordLoading}
+                  disabled={!passwordData.currentPassword || !passwordData.newPassword || !passwordData.confirmPassword}
+                >
+                  Update Password
+                </Button>
               </div>
             </CardContent>
           </Card>

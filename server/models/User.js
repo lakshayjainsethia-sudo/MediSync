@@ -28,7 +28,7 @@ const userSchema = new mongoose.Schema({
   },
   role: {
     type: String,
-    enum: ['Patient', 'Doctor', 'Admin', 'Pharmacist', 'Receptionist'],
+    enum: ['Patient', 'Doctor', 'Admin', 'Pharmacist', 'Receptionist', 'Nurse'],
     default: 'Patient'
   },
   specialization: {
@@ -58,6 +58,14 @@ const userSchema = new mongoose.Schema({
   phone: {
     type: String,
     maxlength: [20, 'Phone number cannot be longer than 20 characters']
+  },
+  averageRating: {
+    type: Number,
+    default: 0
+  },
+  totalRatings: {
+    type: Number,
+    default: 0
   },
   profileImage: {
     type: String,

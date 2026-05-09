@@ -27,8 +27,10 @@ import Lobby from './pages/Lobby'
 import TriageQueue from './pages/TriageQueue'
 import PharmacistDashboard from './pages/pharmacist/PharmacistDashboard'
 import Dispensary from './pages/pharmacist/Dispensary'
+import NurseDashboard from './pages/nurse/NurseDashboard'
+import NurseTriageQueue from './pages/nurse/NurseTriageQueue'
 
-const STAFF_ROLES = ['nurse'] as const
+const STAFF_ROLES = [] as const
 
 interface PrivateRouteProps {
   children: React.ReactNode
@@ -130,6 +132,22 @@ function AppRoutes() {
         element={
           <PrivateRoute allowedRoles={['admin']}>
             <AdminDashboard />
+          </PrivateRoute>
+        }
+      />
+      <Route
+        path="/nurse/dashboard"
+        element={
+          <PrivateRoute allowedRoles={['nurse']}>
+            <NurseDashboard />
+          </PrivateRoute>
+        }
+      />
+      <Route
+        path="/nurse/triage"
+        element={
+          <PrivateRoute allowedRoles={['nurse']}>
+            <NurseTriageQueue />
           </PrivateRoute>
         }
       />

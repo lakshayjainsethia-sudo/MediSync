@@ -22,6 +22,27 @@ router.get('/', async (req, res) => {
   }
 });
 
+// @route   GET /api/doctors/top
+// @desc    Get top rated doctors
+// @access  Public
+router.get('/top', async (req, res) => {
+  try {
+    const doctors = await User.find({ 
+      role: 'doctor',
+      isApproved: true,
+      totalRatings: { $gt: 0 }
+    })
+    .sort({ averageRating: -1, totalRatings: -1 })
+    .limit(5)
+    .select('name specialization averageRating totalRatings profileImage');
+    
+    res.json(doctors);
+  } catch (err) {
+    console.error(err.message);
+    res.status(500).send('Server Error');
+  }
+});
+
 // @route   GET /api/doctors/:id
 // @desc    Get single doctor
 // @access  Public

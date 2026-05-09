@@ -207,4 +207,39 @@ router.post('/refresh-token', async (req, res) => {
   }
 });
 
+// @route   PUT /api/auth/update-password
+// @desc    Update user password
+// @access  Private
+router.put(
+  '/update-password',
+  require('../middleware/auth').protect,
+  [
+    check('currentPassword', 'Current password is required').exists(),
+    check('newPassword', 'Please enter a password with 6 or more characters').isLength({ min: 6 })
+  ],
+  async (req, res) => {
+    try {
+      const { currentPassword, newPassword } = req.body;
+      
+      const user = await User.findById(req.user.id).select('+password');
+      
+      // Check current password
+      const isMatch = await user.matchPassword(currentPassword);
+      if (!isMatch) {
+        return res.status(400).json({ message: 'Incorrect current password' });
+      }
+      
+      user.password = newPassword;
+      await user.save();
+      
+      await logAudit('PASSWORD_UPDATED', req, user._id, 'User', {});
+      
+      res.json({ message: 'Password updated successfully' });
+    } catch (err) {
+      console.error('Update password error:', err.message);
+      res.status(500).send('Server Error');
+    }
+  }
+);
+
 module.exports = router;

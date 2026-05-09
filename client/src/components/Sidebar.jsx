@@ -9,7 +9,9 @@ import {
   QueueListIcon,
   HeartIcon,
   BeakerIcon,
-  ArchiveBoxIcon
+  ArchiveBoxIcon,
+  UserIcon,
+  ExclamationTriangleIcon
 } from '@heroicons/react/24/outline';
 
 /**
@@ -44,6 +46,11 @@ const Sidebar = () => {
       { name: 'Dashboard', path: '/pharmacist/dashboard', icon: HomeIcon },
       { name: 'Dispensary', path: '/pharmacist/dispensary', icon: BeakerIcon },
       { name: 'Inventory', path: '/admin/inventory', icon: ArchiveBoxIcon }
+    ],
+    nurse: [
+      { name: 'Dashboard', path: '/nurse/dashboard', icon: HomeIcon },
+      { name: 'My Patients', path: '/nurse/dashboard', icon: UserIcon },
+      { name: 'Triage Queue', path: '/triage', icon: ExclamationTriangleIcon }
     ],
     // Add Patient arrays as needed...
   };

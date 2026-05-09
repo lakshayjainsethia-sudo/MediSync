@@ -16,10 +16,15 @@ const formatCurrency = (value: number) =>
   }).format(value || 0)
 
 function prepareTrend(trendData?: DashboardStats['revenueTrend']) {
-  return (trendData || []).map(point => ({
-    date: point._id,
-    total: point.total
-  }))
+  let cumulative = 0;
+  return (trendData || []).map(point => {
+    cumulative += point.total;
+    return {
+      date: point._id,
+      total: cumulative,
+      daily: point.total
+    };
+  });
 }
 
 function prepareBreakdown(data?: DashboardStats['revenueBreakdown']) {
@@ -62,57 +67,28 @@ export default function RevenueInsights({ trendData, breakdownData, userDistribu
                 <YAxis tickFormatter={(value) => `₹${(value / 1000).toFixed(0)}k`} />
                 <Tooltip formatter={(value: number) => formatCurrency(value)} />
                 <Legend />
-                <Area
-                  type="monotone"
-                  dataKey="total"
-                  stroke="#059669"
-                  fillOpacity={1}
-                  fill="url(#colorRevenue)"
-                />
+                  <Area
+                    type="monotone"
+                    dataKey="total"
+                    name="Cumulative Revenue"
+                    stroke="#059669"
+                    fillOpacity={1}
+                    fill="url(#colorRevenue)"
+                  />
+                  <Area
+                    type="monotone"
+                    dataKey="daily"
+                    name="Daily Revenue"
+                    stroke="#10b981"
+                    fillOpacity={0.3}
+                    fill="none"
+                  />
               </AreaChart>
             </ResponsiveContainer>
           )}
         </CardContent>
       </Card>
 
-      <Card>
-        <CardHeader title="Revenue & User Distribution" subtitle="Understand payment status and user mix" />
-        <CardContent className="grid grid-cols-1 gap-6 xl:grid-cols-2">
-          <div>
-            <h4 className="text-sm font-semibold text-gray-700 mb-3">Revenue by payment status</h4>
-            {breakdown.length === 0 ? (
-              <p className="text-sm text-gray-500">No payments recorded yet.</p>
-            ) : (
-              <ResponsiveContainer width="100%" height={220}>
-                <BarChart data={breakdown}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="status" />
-                  <YAxis tickFormatter={(value) => `₹${(value / 1000).toFixed(0)}k`} />
-                  <Tooltip formatter={(value: number) => formatCurrency(value)} />
-                  <Legend />
-                  <Bar dataKey="total" fill="#0ea5e9" radius={[6, 6, 0, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
-            )}
-          </div>
-
-          <div>
-            <h4 className="text-sm font-semibold text-gray-700 mb-3">User distribution</h4>
-            {distribution.length === 0 ? (
-              <p className="text-sm text-gray-500">No user distribution data.</p>
-            ) : (
-              <ul className="space-y-3">
-                {distribution.map(item => (
-                  <li key={item.role} className="flex items-center justify-between">
-                    <span className="capitalize text-gray-700">{item.role}</span>
-                    <span className="font-semibold text-gray-900">{item.count}</span>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
-        </CardContent>
-      </Card>
     </div>
   )
 }

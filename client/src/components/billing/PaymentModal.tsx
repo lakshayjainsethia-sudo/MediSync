@@ -66,15 +66,15 @@ export default function PaymentModal({ bill, onClose, onSuccess }: PaymentModalP
           </div>
           <div className="flex justify-between mb-2">
             <span className="text-sm text-gray-600">Total Amount:</span>
-            <span className="font-medium">${bill.total.toFixed(2)}</span>
+            <span className="font-medium">₹{bill.total.toFixed(2)}</span>
           </div>
           <div className="flex justify-between mb-2">
             <span className="text-sm text-gray-600">Already Paid:</span>
-            <span className="font-medium">${(bill.payments?.reduce((sum, p) => sum + p.amount, 0) || 0).toFixed(2)}</span>
+            <span className="font-medium">₹{(bill.payments?.reduce((sum, p) => sum + p.amount, 0) || 0).toFixed(2)}</span>
           </div>
           <div className="flex justify-between pt-2 border-t border-gray-200">
             <span className="text-sm font-semibold text-gray-900">Remaining Balance:</span>
-            <span className="text-lg font-bold text-primary-600">${remainingBalance.toFixed(2)}</span>
+            <span className="text-lg font-bold text-primary-600">₹{remainingBalance.toFixed(2)}</span>
           </div>
         </div>
 
