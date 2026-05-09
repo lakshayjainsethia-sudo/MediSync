@@ -222,7 +222,7 @@ export default function PatientDashboard() {
                             )}
                           </div>
                           <div className="flex flex-col gap-2">
-                            {(apt.status === 'scheduled' || apt.status === 'Confirmed') && (
+                            {(apt.status === 'scheduled' || apt.status === 'rescheduled') && (
                               <button
                                 onClick={() => handleCancelAppointment(apt._id)}
                                 className="px-4 py-2 text-red-600 hover:bg-red-50 rounded-lg transition"
