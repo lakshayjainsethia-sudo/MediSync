@@ -164,6 +164,7 @@ router.get('/me', protect, applyRoleProjection, async (req, res) => {
       appointments = await Appointment.find({ patient: req.user.id })
         .select(req.fieldProjection)
         .populate('doctor', 'name specialization')
+        .populate('assignedNurse', 'name')
         .sort({ priority: 1, date: -1, startTime: -1 }); // Priority 1 and 2 move to the top
     } else if (req.user.role === 'doctor' || req.user.role === 'Doctor') {
       appointments = await Appointment.find({ doctor: req.user.id, status: { $ne: 'Billing_Pending' } })

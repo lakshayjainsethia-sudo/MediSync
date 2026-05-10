@@ -167,7 +167,8 @@ export default function PatientDashboard() {
                   </div>
                 ) : (
                   appointments.map((apt) => {
-                    const doctor = typeof apt.doctor === 'object' ? apt.doctor : null
+                    const doctor = typeof apt.doctor === 'object' ? apt.doctor : null;
+                    const nurse = typeof apt.assignedNurse === 'object' ? apt.assignedNurse : null;
                     return (
                       <div key={apt._id} className="py-4 px-6 hover:bg-slate-50">
                         <div className="flex justify-between items-start">
@@ -175,13 +176,17 @@ export default function PatientDashboard() {
                             <div className="flex items-center space-x-3 mb-2">
                               <UserIcon className="h-5 w-5 text-primary-600" />
                               <h3 className="text-lg font-semibold text-slate-900">
-                                Dr. {doctor?.name || 'Unknown'}
+                                {nurse ? `Nurse ${nurse.name} (Overridden)` : `Dr. ${doctor?.name || 'Unknown'}`}
                               </h3>
-                              {doctor?.specialization && (
+                              {nurse ? (
+                                <span className="px-2 py-1 text-xs bg-primary-100 text-primary-700 rounded">
+                                  Nursing Staff
+                                </span>
+                              ) : doctor?.specialization ? (
                                 <span className="px-2 py-1 text-xs bg-primary-100 text-primary-700 rounded">
                                   {doctor.specialization}
                                 </span>
-                              )}
+                              ) : null}
                             </div>
                             <div className="flex items-center space-x-4 text-sm text-slate-600 ml-8">
                               <div className="flex items-center space-x-1">
@@ -234,7 +239,7 @@ export default function PatientDashboard() {
                               <Button
                                 size="sm"
                                 variant="outline"
-                                onClick={() => setRatingModal({ isOpen: true, appointmentId: apt._id, doctorName: doctor?.name || 'Doctor' })}
+                                onClick={() => setRatingModal({ isOpen: true, appointmentId: apt._id, doctorName: nurse ? `Nurse ${nurse.name}` : `Dr. ${doctor?.name || 'Doctor'}` })}
                               >
                                 <Star className="h-4 w-4 mr-1" />
                                 Rate

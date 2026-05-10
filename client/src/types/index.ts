@@ -39,6 +39,7 @@ export interface Appointment {
   _id: string
   patient: string | User
   doctor: string | User
+  assignedNurse?: string | User
   date: string
   startTime: string
   endTime: string

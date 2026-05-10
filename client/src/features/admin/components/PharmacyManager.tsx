@@ -157,39 +157,33 @@ export default function PharmacyManager() {
         )}
 
         {editingMed && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-            <div className="bg-white rounded-lg shadow-xl w-full max-w-md p-6 relative">
-              <button 
-                onClick={() => setEditingMed(null)}
-                className="absolute top-4 right-4 text-gray-400 hover:text-gray-600"
-              >
-                <X className="w-5 h-5" />
-              </button>
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+            <div className="bg-white rounded-xl shadow-xl w-full max-w-md p-6">
               <h3 className="text-xl font-bold text-slate-900 mb-4">Edit Medicine: {editingMed.name}</h3>
               <form onSubmit={handleSave} className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Price (₹)</label>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Price (₹)</label>
                   <input
                     type="number"
                     value={editPrice}
                     onChange={(e) => setEditPrice(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
+                    className="w-full p-2 border border-slate-300 rounded focus:ring-2 focus:ring-primary-500"
                     min="0"
                     required
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Minimum Stock Threshold</label>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Minimum Stock Threshold</label>
                   <input
                     type="number"
                     value={editThreshold}
                     onChange={(e) => setEditThreshold(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
+                    className="w-full p-2 border border-slate-300 rounded focus:ring-2 focus:ring-primary-500"
                     min="0"
                     required
                   />
                 </div>
-                <div className="flex justify-end gap-3 pt-4 border-t border-gray-100">
+                <div className="flex justify-end gap-3 mt-6">
                   <Button variant="outline" type="button" onClick={() => setEditingMed(null)}>
                     Cancel
                   </Button>
@@ -203,96 +197,86 @@ export default function PharmacyManager() {
         )}
 
         {showAddForm && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-            <div className="bg-white rounded-lg shadow-xl w-full max-w-md p-6 relative">
-              <button 
-                onClick={() => setShowAddForm(false)}
-                className="absolute top-4 right-4 text-gray-400 hover:text-gray-600"
-              >
-                <X className="w-5 h-5" />
-              </button>
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+            <div className="bg-white rounded-xl shadow-xl w-full max-w-md p-6">
               <h3 className="text-xl font-bold text-slate-900 mb-4">Add New Medicine</h3>
               <form onSubmit={handleCreate} className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Name</label>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Name</label>
                   <input
                     type="text"
                     value={newMed.name}
                     onChange={(e) => setNewMed({...newMed, name: e.target.value})}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
+                    className="w-full p-2 border border-slate-300 rounded focus:ring-2 focus:ring-primary-500"
                     required
                   />
                 </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Category</label>
-                    <input
-                      type="text"
-                      value={newMed.category}
-                      onChange={(e) => setNewMed({...newMed, category: e.target.value})}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
-                      required
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Unit (mg, ml, etc)</label>
-                    <input
-                      type="text"
-                      value={newMed.unit}
-                      onChange={(e) => setNewMed({...newMed, unit: e.target.value})}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
-                      required
-                    />
-                  </div>
-                </div>
-                <div className="grid grid-cols-3 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Price (₹)</label>
-                    <input
-                      type="number"
-                      value={newMed.price}
-                      onChange={(e) => setNewMed({...newMed, price: e.target.value})}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
-                      min="0" required
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Init Stock</label>
-                    <input
-                      type="number"
-                      value={newMed.stockQuantity}
-                      onChange={(e) => setNewMed({...newMed, stockQuantity: e.target.value})}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
-                      min="0" required
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Min Alert</label>
-                    <input
-                      type="number"
-                      value={newMed.minimumThreshold}
-                      onChange={(e) => setNewMed({...newMed, minimumThreshold: e.target.value})}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
-                      min="0" required
-                    />
-                  </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Category</label>
+                  <input
+                    type="text"
+                    value={newMed.category}
+                    onChange={(e) => setNewMed({...newMed, category: e.target.value})}
+                    className="w-full p-2 border border-slate-300 rounded focus:ring-2 focus:ring-primary-500"
+                    required
+                  />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Expiry Date</label>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Unit (mg, ml, etc)</label>
+                  <input
+                    type="text"
+                    value={newMed.unit}
+                    onChange={(e) => setNewMed({...newMed, unit: e.target.value})}
+                    className="w-full p-2 border border-slate-300 rounded focus:ring-2 focus:ring-primary-500"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Price (₹)</label>
+                  <input
+                    type="number"
+                    value={newMed.price}
+                    onChange={(e) => setNewMed({...newMed, price: e.target.value})}
+                    className="w-full p-2 border border-slate-300 rounded focus:ring-2 focus:ring-primary-500"
+                    min="0" required
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Init Stock</label>
+                  <input
+                    type="number"
+                    value={newMed.stockQuantity}
+                    onChange={(e) => setNewMed({...newMed, stockQuantity: e.target.value})}
+                    className="w-full p-2 border border-slate-300 rounded focus:ring-2 focus:ring-primary-500"
+                    min="0" required
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Min Alert</label>
+                  <input
+                    type="number"
+                    value={newMed.minimumThreshold}
+                    onChange={(e) => setNewMed({...newMed, minimumThreshold: e.target.value})}
+                    className="w-full p-2 border border-slate-300 rounded focus:ring-2 focus:ring-primary-500"
+                    min="0" required
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Expiry Date</label>
                   <input
                     type="date"
                     value={newMed.expiryDate}
                     onChange={(e) => setNewMed({...newMed, expiryDate: e.target.value})}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
+                    className="w-full p-2 border border-slate-300 rounded focus:ring-2 focus:ring-primary-500"
                     required
                   />
                 </div>
-                <div className="flex justify-end gap-3 pt-4 border-t border-gray-100">
+                <div className="flex justify-end gap-3 mt-6">
                   <Button variant="outline" type="button" onClick={() => setShowAddForm(false)}>
                     Cancel
                   </Button>
                   <Button type="submit" isLoading={isSaving}>
-                    Add Medicine
+                    Save
                   </Button>
                 </div>
               </form>

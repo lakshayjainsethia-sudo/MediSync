@@ -112,7 +112,7 @@ router.post('/generate-final', [authorize('admin', 'receptionist')], async (req,
     }
 
     // Populate doctor manually if assignedDoctor doesn't work (fallback to doctor)
-    const doctorId = appointment.doctor || appointment.assignedDoctor;
+    let doctorId = appointment.doctor?._id || appointment.doctor || appointment.assignedDoctor;
     const DoctorModel = require('../models/User'); // Consultation fee is on User profile
     const doctor = await DoctorModel.findById(doctorId);
 
@@ -256,11 +256,13 @@ router.get('/me', async (req, res) => {
 
     if (req.user.role === 'patient') {
       bills = await Billing.find({ patient: req.user.id })
+        .populate('doctor', 'name specialization')
         .populate('appointment', 'date')
         .sort({ createdAt: -1 });
     } else {
       bills = await Billing.find()
         .populate('patient', 'name email phone')
+        .populate('doctor', 'name specialization')
         .populate('appointment', 'date')
         .sort({ createdAt: -1 });
     }
@@ -284,6 +286,7 @@ router.get('/patient/:patientId', async (req, res) => {
     }
 
     const bills = await Billing.find({ patient: patientId })
+      .populate('doctor', 'name specialization')
       .populate('appointment', 'date')
       .sort({ createdAt: -1 });
 
@@ -301,6 +304,7 @@ router.get('/:id', async (req, res) => {
   try {
     const bill = await Billing.findById(req.params.id)
       .populate('patient', 'name email phone')
+      .populate('doctor', 'name specialization')
       .populate('appointment', 'date');
 
     if (!bill) {

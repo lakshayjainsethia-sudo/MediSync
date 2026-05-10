@@ -173,7 +173,16 @@ const appointmentSchema = new mongoose.Schema({
     type: String,
     enum: ['WithMedicines', 'ConsultationOnly']
   },
-  finalBillId: { type: mongoose.Schema.Types.ObjectId, ref: 'Billing' }
+  finalBillId: { type: mongoose.Schema.Types.ObjectId, ref: 'Billing' },
+  rating: {
+    type: Number,
+    min: 1,
+    max: 5
+  },
+  review: {
+    type: String,
+    trim: true
+  }
 }, { 
   timestamps: true,
   toJSON: { getters: true, virtuals: true },
