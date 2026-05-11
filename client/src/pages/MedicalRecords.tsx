@@ -1,11 +1,10 @@
 import { useState, useEffect } from 'react'
 import { useAuth } from '../context/AuthContext'
-import { useLocation } from 'react-router-dom'
 import { medicalRecordsApi } from '../utils/api'
 import { MedicalRecord } from '../types'
 import { toast } from 'react-toastify'
 import { FileText, Plus, Calendar, User, Search } from 'lucide-react'
-import Card, { CardHeader, CardContent } from '../components/ui/Card'
+import Card, { CardContent } from '../components/ui/Card'
 import Button from '../components/ui/Button'
 import Modal from '../components/ui/Modal'
 import CreateMedicalRecordModal from '../components/medical/CreateMedicalRecordModal'
@@ -18,6 +17,8 @@ export default function MedicalRecords() {
   const [showCreateModal, setShowCreateModal] = useState(false)
   const [selectedRecord, setSelectedRecord] = useState<MedicalRecord | null>(null)
   const [searchTerm, setSearchTerm] = useState('')
+  const [initialPatientId, setInitialPatientId] = useState<string | undefined>()
+  const [initialAppointmentId, setInitialAppointmentId] = useState<string | undefined>()
 
   useEffect(() => {
     fetchRecords()

@@ -116,7 +116,7 @@ export default function NurseTriageQueue() {
         ) : (
           <div className="divide-y divide-slate-100">
             {appointments.map(patient => {
-              const isAssignedToMe = patient.assignedNurse?._id === user?.id;
+              const isAssignedToMe = patient.assignedNurse?._id === user?._id;
               const isAssignedToOther = patient.assignedNurse && !isAssignedToMe;
 
               return (

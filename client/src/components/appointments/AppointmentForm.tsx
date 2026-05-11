@@ -172,10 +172,11 @@ export default function AppointmentForm({ onSuccess, onCancel, patientId }: Appo
            // Convert "2:00 PM" to "14:00"
            const formatTo24 = (timeStr: string) => {
               const [time, period] = timeStr.trim().split(' ');
-              let [h, m] = time.split(':');
-              if (period === 'PM' && h !== '12') h = String(parseInt(h, 10) + 12);
-              if (period === 'AM' && h === '12') h = '00';
-              return `${h.padStart(2, '0')}:${m}`;
+               const [hour, minutes] = time.split(':');
+               let h = hour;
+               if (period === 'PM' && h !== '12') h = String(parseInt(h, 10) + 12);
+               if (period === 'AM' && h === '12') h = '00';
+               return `${h.padStart(2, '0')}:${minutes}`;
            }
            finalStart = formatTo24(start);
            finalEnd = formatTo24(end);

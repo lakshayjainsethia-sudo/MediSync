@@ -55,7 +55,7 @@ export default function DoctorDashboard() {
         if (existing) {
           const updated = prev.map(a => 
             a._id === data.appointmentId 
-              ? { ...a, triage_tag: 'RED' as 'RED', weightedScore: data.weightedScore, pulse: true } 
+              ? { ...a, triage_tag: 'RED' as const, weightedScore: data.weightedScore, pulse: true } 
               : a
           )
           return updated.sort((a: any, b: any) => {
@@ -82,7 +82,7 @@ export default function DoctorDashboard() {
       setAppointments(prev => {
         const updated = prev.map(a => 
           a._id === data.appointmentId 
-            ? { ...a, triage_tag: 'RED' as 'RED', pulse: true } 
+            ? { ...a, triage_tag: 'RED' as const, pulse: true } 
             : a
         )
         return updated.sort((a: any, b: any) => {
@@ -133,15 +133,6 @@ export default function DoctorDashboard() {
     } finally {
       setLoading(false)
     }
-  }
-
-  const openCompleteModal = (appointment: Appointment) => {
-    setSelectedAppointment(appointment)
-    setDiagnosis(appointment.diagnosis || '')
-    setPrescription(appointment.prescription || '')
-    setClinicalNotes((appointment as any).clinicalNotes || '')
-    setBillingSummary((appointment as any).billingSummary || '')
-    setShowCompleteModal(true)
   }
 
   const upcomingAppointments = appointments.filter(apt => {

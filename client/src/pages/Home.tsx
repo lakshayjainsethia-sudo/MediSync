@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
-import { Stethoscope, Calendar, Users, Shield } from 'lucide-react'
+import { Calendar, Users, Shield } from 'lucide-react'
 
 export default function Home() {
   const { user } = useAuth()

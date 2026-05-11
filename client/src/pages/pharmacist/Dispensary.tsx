@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { pharmacistApi } from '../../utils/api';
 import { toast } from 'react-toastify';
-import Card, { CardContent } from '../../components/ui/Card';
+import Card from '../../components/ui/Card';
 import Button from '../../components/ui/Button';
 import { Search, ChevronLeft, ChevronRight, Pill, AlertCircle, CheckCircle, XCircle } from 'lucide-react';
 import api from '../../utils/api';

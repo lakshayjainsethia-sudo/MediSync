@@ -57,6 +57,7 @@ export interface Appointment {
   aiReasoning?: string
   aiRedFlags?: string[]
   riskOverride?: boolean
+  riskOverrideReason?: string
   pulse?: boolean
   rating?: number
   review?: string

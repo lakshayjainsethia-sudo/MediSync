@@ -1,4 +1,4 @@
-import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, Legend, BarChart, Bar } from 'recharts'
+import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, Legend } from 'recharts'
 import Card, { CardContent, CardHeader } from '../../../components/ui/Card'
 import { DashboardStats } from '../../../types'
 
@@ -27,24 +27,8 @@ function prepareTrend(trendData?: DashboardStats['revenueTrend']) {
   });
 }
 
-function prepareBreakdown(data?: DashboardStats['revenueBreakdown']) {
-  return (data || []).map(item => ({
-    status: item._id,
-    total: item.total
-  }))
-}
-
-function prepareUserDistribution(data?: DashboardStats['userDistribution']) {
-  return (data || []).map(item => ({
-    role: item._id,
-    count: item.count
-  }))
-}
-
-export default function RevenueInsights({ trendData, breakdownData, userDistribution }: RevenueInsightsProps) {
+export default function RevenueInsights({ trendData }: RevenueInsightsProps) {
   const trend = prepareTrend(trendData)
-  const breakdown = prepareBreakdown(breakdownData)
-  const distribution = prepareUserDistribution(userDistribution)
 
   return (
     <div className="space-y-6">

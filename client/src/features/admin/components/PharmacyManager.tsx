@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Search, Edit2, X, Trash2, Plus } from 'lucide-react'
+import { Search, Edit2, Plus } from 'lucide-react'
 import { toast } from 'react-toastify'
 import Card, { CardContent, CardHeader } from '../../../components/ui/Card'
 import Button from '../../../components/ui/Button'
@@ -9,7 +9,7 @@ export default function PharmacyManager() {
   const [medicines, setMedicines] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
-  
+
   // Edit State
   const [editingMed, setEditingMed] = useState<any | null>(null)
   const [editPrice, setEditPrice] = useState<string>('')

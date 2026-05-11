@@ -3,7 +3,7 @@ import { pharmacistApi } from '../../utils/api'
 import { toast } from 'react-toastify'
 import Card from '../../components/ui/Card'
 import Button from '../../components/ui/Button'
-import { Pill, Activity, AlertTriangle, FileText, CheckCircle, Search, Plus, Trash2 } from 'lucide-react'
+import { Pill, AlertTriangle, FileText, CheckCircle, Search, Plus, Trash2 } from 'lucide-react'
 import { io } from 'socket.io-client'
 import EquipmentView from '../../features/admin/components/EquipmentManager'
 

@@ -1,41 +1,57 @@
 # MediSync
 
-MediSync is a full-stack healthcare appointment and patient management platform designed to streamline interactions between patients, doctors, and administrators. The platform provides secure authentication, appointment scheduling, and efficient healthcare workflow management.
-
-## Features
-
-- Secure user authentication using JWT
-- Role-based access control (Patient, Doctor, Admin)
-- Appointment booking and scheduling system
-- Patient and doctor management
-- RESTful API architecture for scalable backend services
-- Responsive frontend interface for smooth user experience
+MediSync is a full-stack healthcare workflow platform for patients, doctors, nurses, pharmacists, receptionists, and administrators. It supports appointment scheduling, triage workflows, medical records, prescriptions, billing, inventory, notifications, audit logging, and admin analytics.
 
 ## Tech Stack
 
-**Frontend**
-- React.js
-- TypeScript
-- Tailwind CSS
-
-**Backend**
-- Node.js
-- Express.js
-
-**Database**
-- MongoDB
-
-**Authentication**
-- JSON Web Tokens (JWT)
+- Frontend: React, TypeScript, Vite, Tailwind CSS
+- Backend: Node.js, Express, MongoDB, Mongoose
+- Realtime: Socket.IO
+- Security: JWT, HTTP-only cookies, CSRF protection, Helmet, rate limiting, audit logs
+- Deployment: Docker Compose and Nginx reverse proxy
 
 ## Project Structure
+
+```text
 MediSync/
-│
-├── client/ # Frontend application
-├── server/ # Backend API
-├── models/ # Database schemas
-├── routes/ # API routes
-├── controllers/ # Business logic
-└── README.md
+  client/   React/Vite frontend
+  server/   Express API, models, routes, services, middleware
+  nginx/    Reverse proxy configuration
+```
 
+## Getting Started
 
+### Server
+
+```bash
+cd server
+npm install
+cp .env.example .env
+npm run dev
+```
+
+### Client
+
+```bash
+cd client
+npm install
+npm run dev
+```
+
+### Docker
+
+```bash
+docker compose up --build
+```
+
+Set strong values for `JWT_SECRET`, `JWT_REFRESH_SECRET`, `ENCRYPTION_SECRET`, and `MASTER_KEY` before using the Docker setup beyond local development.
+
+## Verification
+
+```bash
+cd client
+npm run build
+
+cd ../server
+npm test
+```

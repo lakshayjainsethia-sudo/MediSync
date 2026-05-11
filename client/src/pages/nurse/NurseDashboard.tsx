@@ -4,7 +4,7 @@ import { toast } from 'react-toastify';
 import api from '../../utils/api';
 import io from 'socket.io-client';
 import { formatDistanceToNow, format } from 'date-fns';
-import { Check, X, Clock, AlertTriangle, AlertCircle, Calendar, CalendarCheck2, Activity } from 'lucide-react';
+import { X, Clock, Calendar, CalendarCheck2, Activity } from 'lucide-react';
 import Button from '../../components/ui/Button';
 import { useNavigate } from 'react-router-dom';
 import Card, { CardContent, CardHeader } from '../../components/ui/Card';
@@ -93,7 +93,7 @@ export default function NurseDashboard() {
         }
       };
 
-      const res = await api.post(`/nurse/appointments/${appointmentId}/vitals`, payload);
+      await api.post(`/nurse/appointments/${appointmentId}/vitals`, payload);
       toast.success('Vitals recorded ✓');
       setExpandedVitalsForm(null);
       setVitalsForm({ note: '', bp: '', hr: '', temp: '', spo2: '', weight: '', height: '' });

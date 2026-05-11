@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { prescriptionsApi, appointmentsApi } from '../../utils/api'
-import { Appointment, User } from '../../types'
+import { Appointment } from '../../types'
 import { toast } from 'react-toastify'
 import Modal from '../ui/Modal'
 import Input from '../ui/Input'
@@ -102,10 +102,11 @@ export default function CreatePrescriptionModal({
     const newMedications = [...formData.medications]
     if (field.includes('.')) {
       const [parent, child] = field.split('.')
+      const nestedValue = newMedications[index][parent as keyof typeof newMedications[0]]
       newMedications[index] = {
         ...newMedications[index],
         [parent]: {
-          ...newMedications[index][parent as keyof typeof newMedications[0]],
+          ...(typeof nestedValue === 'object' && nestedValue !== null ? nestedValue : {}),
           [child]: value
         }
       }

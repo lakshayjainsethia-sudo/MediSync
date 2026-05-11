@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { medicalRecordsApi, appointmentsApi } from '../../utils/api'
-import { Appointment, User } from '../../types'
+import { Appointment } from '../../types'
 import { toast } from 'react-toastify'
 import Modal from '../ui/Modal'
 import Input from '../ui/Input'

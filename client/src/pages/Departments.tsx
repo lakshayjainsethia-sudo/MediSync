@@ -3,7 +3,7 @@ import { departmentsApi } from '../utils/api'
 import { Department } from '../types'
 import { toast } from 'react-toastify'
 import { Building2, Users, Search } from 'lucide-react'
-import Card, { CardHeader, CardContent } from '../components/ui/Card'
+import Card, { CardContent } from '../components/ui/Card'
 
 export default function Departments() {
   const [departments, setDepartments] = useState<Department[]>([])

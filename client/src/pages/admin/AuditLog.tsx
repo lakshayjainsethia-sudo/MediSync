@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import api from '../../api/axios';
-import Card, { CardHeader, CardContent } from '../../components/ui/Card';
+import Card, { CardContent } from '../../components/ui/Card';
 import Button from '../../components/ui/Button';
 
 export default function AuditLog() {

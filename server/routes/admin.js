@@ -16,8 +16,11 @@ router.post('/setup', async (req, res) => {
   try {
     const { name, email, password, masterKey } = req.body;
 
-    // Validate master key from env or default fallback
-    const validMasterKey = process.env.MASTER_KEY || 'medisync-elite-2026';
+    // Validate master key from env only. Do not allow a built-in setup key.
+    const validMasterKey = process.env.MASTER_KEY;
+    if (!validMasterKey) {
+      return res.status(500).json({ message: 'Admin setup is not configured' });
+    }
     if (masterKey !== validMasterKey) {
       return res.status(403).json({ message: 'Invalid Master Key' });
     }
