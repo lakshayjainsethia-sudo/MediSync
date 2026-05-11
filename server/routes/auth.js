@@ -136,11 +136,15 @@ router.post('/logout', async (req, res) => {
 
   res.cookie(process.env.COOKIE_NAME || 'token', 'none', {
     expires: new Date(Date.now() + 10 * 1000),
-    httpOnly: true
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'strict'
   });
   res.cookie('refreshToken', 'none', {
     expires: new Date(Date.now() + 10 * 1000),
-    httpOnly: true
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'strict'
   });
   res.status(200).json({ success: true, message: 'User logged out successfully' });
 });
@@ -151,8 +155,14 @@ router.post('/logout', async (req, res) => {
 router.post('/logout-all', require('../middleware/auth').protect, async (req, res) => {
   try {
     await Session.deleteMany({ user: req.user.id });
-    res.cookie(process.env.COOKIE_NAME || 'token', 'none', { expires: new Date(Date.now() + 10), httpOnly: true });
-    res.cookie('refreshToken', 'none', { expires: new Date(Date.now() + 10), httpOnly: true });
+    const clearCookieOptions = {
+      expires: new Date(Date.now() + 10),
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'strict'
+    };
+    res.cookie(process.env.COOKIE_NAME || 'token', 'none', clearCookieOptions);
+    res.cookie('refreshToken', 'none', clearCookieOptions);
     res.status(200).json({ success: true, message: 'All sessions revoked' });
   } catch (error) {
     res.status(500).json({ error: 'Server error' });

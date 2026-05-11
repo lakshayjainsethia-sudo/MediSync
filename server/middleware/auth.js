@@ -7,9 +7,11 @@ const protect = async (req, res, next) => {
   try {
     let token;
     
-    // STRICT: Only read token from secure HTTP-only cookies
     if (req.cookies && req.cookies.token) {
       token = req.cookies.token;
+    }
+    if (!token && req.headers.authorization?.startsWith('Bearer ')) {
+      token = req.headers.authorization.split(' ')[1];
     }
 
     if (!token) {
@@ -97,7 +99,7 @@ const sendTokenResponse = async (user, statusCode, req, res) => {
     ),
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
-    sameSite: 'strict'
+    sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'strict'
   };
 
   const UAParser = require('ua-parser-js');

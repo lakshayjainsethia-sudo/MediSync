@@ -12,12 +12,12 @@ const csrfProtection = (req, res, next) => {
     res.cookie('csrfSecret', newSecret, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
-      sameSite: 'strict'
+      sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'strict'
     });
     // Send public token in non-httpOnly cookie so frontend can read it and send back in headers
     res.cookie('XSRF-TOKEN', newSecret, {
       secure: process.env.NODE_ENV === 'production',
-      sameSite: 'strict'
+      sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'strict'
     });
     req.cookies.csrfSecret = newSecret;
   }
