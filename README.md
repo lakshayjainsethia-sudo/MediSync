@@ -265,58 +265,6 @@ MediSync
 └── README.md
 ```
 
----
-# 📸 Screenshots
-
-> **Note:** Replace the placeholder images with actual screenshots from your application. Store all screenshots inside a `/docs/images` directory.
-
-## 🔐 Login Page
-
-<p align="center">
-  <img src="docs/images/login.png" alt="Login" width="900">
-</p>
-
----
-
-## 🏠 Dashboard
-
-<p align="center">
-  <img src="docs/images/dashboard.png" alt="Dashboard" width="900">
-</p>
-
----
-
-## 📅 Appointment Management
-
-<p align="center">
-  <img src="docs/images/appointments.png" alt="Appointments" width="900">
-</p>
-
----
-
-## 🩺 Medical Records
-
-<p align="center">
-  <img src="docs/images/medical-records.png" alt="Medical Records" width="900">
-</p>
-
----
-
-## 💊 Prescription Management
-
-<p align="center">
-  <img src="docs/images/prescriptions.png" alt="Prescriptions" width="900">
-</p>
-
----
-
-## 💳 Billing Dashboard
-
-<p align="center">
-  <img src="docs/images/billing.png" alt="Billing" width="900">
-</p>
-
----
 
 # ⚙ Installation
 
