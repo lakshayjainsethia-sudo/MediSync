@@ -42,7 +42,11 @@ router.get('/', async (req, res) => {
     let query = {};
     
     if (q) {
-      query.name = { $regex: q, $options: 'i' };
+      query.$or = [
+        { name: { $regex: q, $options: 'i' } },
+        { category: { $regex: q, $options: 'i' } },
+        { manufacturer: { $regex: q, $options: 'i' } }
+      ];
     }
     
     if (category && category !== 'All') {
@@ -73,6 +77,8 @@ router.get('/', async (req, res) => {
 
     if (stock === 'low') {
       pipeline.push({ $match: { stockStatusOrder: { $in: [1, 2] } } });
+    } else if (stock === 'out') {
+      pipeline.push({ $match: { stockStatusOrder: 1 } });
     }
 
     pipeline.push({ $sort: { stockStatusOrder: 1, name: 1 } });

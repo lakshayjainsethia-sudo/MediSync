@@ -15,7 +15,7 @@ interface PaymentModalProps {
 export default function PaymentModal({ bill, onClose, onSuccess }: PaymentModalProps) {
   const [formData, setFormData] = useState({
     amount: bill.total - (bill.payments?.reduce((sum, p) => sum + p.amount, 0) || 0),
-    method: 'cash' as 'cash' | 'card' | 'insurance' | 'online' | 'other',
+    method: 'cash' as 'cash' | 'card' | 'upi' | 'insurance' | 'online' | 'other',
     transactionId: ''
   })
   const [loading, setLoading] = useState(false)
@@ -99,6 +99,7 @@ export default function PaymentModal({ bill, onClose, onSuccess }: PaymentModalP
           >
             <option value="cash">Cash</option>
             <option value="card">Card</option>
+            <option value="upi">UPI</option>
             <option value="insurance">Insurance</option>
             <option value="online">Online</option>
             <option value="other">Other</option>

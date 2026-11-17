@@ -2,6 +2,14 @@ import axios from 'axios'
 import { toast } from 'react-toastify'
 import { RegisterableRole } from '../types'
 
+const getCookie = (name: string) => {
+  const cookie = document.cookie
+    .split('; ')
+    .find((row) => row.startsWith(`${name}=`))
+
+  return cookie ? decodeURIComponent(cookie.split('=')[1]) : null
+}
+
 const api = axios.create({
   baseURL: import.meta.env.VITE_API_BASE_URL || '/api/v1',
   withCredentials: true,
@@ -16,6 +24,10 @@ api.interceptors.request.use(
     const token = localStorage.getItem('token')
     if (token) {
       config.headers.Authorization = `Bearer ${token}`
+    }
+    const csrfToken = getCookie('XSRF-TOKEN')
+    if (csrfToken) {
+      config.headers['X-CSRF-Token'] = csrfToken
     }
     return config
   },
@@ -56,6 +68,7 @@ export const doctorsApi = {
   getAll: () => api.get('/doctors'),
   getTop: () => api.get('/doctors/top'),
   getById: (id: string) => api.get(`/doctors/${id}`),
+  getSlots: (id: string, date: string) => api.get(`/doctors/${id}/slots`, { params: { date } }),
   getMyAppointments: () => api.get('/doctors/me/appointments'),
   updateProfile: (data: any) => api.put('/doctors/me', data),
 }
@@ -103,7 +116,7 @@ export const prescriptionsApi = {
 export const billingApi = {
   getAll: (params?: { status?: string }) => api.get('/billing', { params }),
   create: (data: any) => api.post('/billing', data),
-  generateFinal: (data: { appointmentId: string; additionalCharges?: any[] }) => api.post('/billing/generate-final', data),
+  generateFinal: (data: { appointmentId: string; additionalCharges?: any[]; tax?: number; paymentMethod?: string }) => api.post('/billing/generate-final', data),
   getMine: () => api.get('/billing/me'),
   getByPatient: (patientId: string) => api.get(`/billing/patient/${patientId}`),
   getById: (id: string) => api.get(`/billing/${id}`),
@@ -162,7 +175,8 @@ export const pharmacistApi = {
   dispensePrescription: (id: string, data: { medicinesToDispense: any[] }) => api.patch(`/pharmacist/prescriptions/${id}/dispense`, data),
   noMedicineHandoff: (id: string) => api.patch(`/pharmacist/prescriptions/${id}/no-medicine`),
   getLowStockMedicines: (threshold?: number) => api.get('/pharmacist/medicines/low-stock', { params: { threshold } }),
-  searchMedicines: (q: string) => api.get(`/pharmacist/medicine/search?q=${encodeURIComponent(q)}`),
+  getMedicines: (params?: { q?: string; category?: string; stock?: string; page?: number; limit?: number }) => api.get('/medicines', { params }),
+  searchMedicines: (q: string, limit = 20) => api.get('/medicines', { params: { q, limit } }),
   seedMedicines: () => api.post('/medicines/seed'),
   createMedicine: (data: any) => api.post('/medicines', data),
   updateMedicine: (id: string, data: any) => api.put(`/medicines/${id}`, data)

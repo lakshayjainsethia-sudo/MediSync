@@ -59,7 +59,7 @@ export default function ConsultationView() {
     try {
       setFetchingNurses(true);
       const res = await api.get('/users/nurses');
-      setNurses(res.data.data);
+      setNurses(res.data?.data || []);
     } catch (err) {
       console.error('Failed to fetch nurses', err);
     } finally {
@@ -73,6 +73,7 @@ export default function ConsultationView() {
       setAssigningNurse(true);
       const res = await api.patch(`/appointments/${appointmentId}/assign-nurse`, { nurseId: selectedNurseId });
       setAppointment(res.data);
+      setSelectedNurseId('');
       toast.success('Nurse assigned successfully');
     } catch (err) {
       console.error(err);

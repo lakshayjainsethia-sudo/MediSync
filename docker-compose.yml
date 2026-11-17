@@ -15,9 +15,10 @@ services:
       - ENCRYPTION_SECRET=${ENCRYPTION_SECRET:-change_me_encryption_secret_32_chars}
       - MASTER_KEY=${MASTER_KEY:-change_me_master_key}
       - CLIENT_URL=http://localhost:5173
-      - FASTAPI_URL=${FASTAPI_URL:-http://host.docker.internal:8000}
+      - FASTAPI_URL=${FASTAPI_URL:-http://ai-service:8000}
     depends_on:
       - mongo
+      - ai-service
     networks:
       - medisync-network
 
@@ -48,6 +49,28 @@ services:
     networks:
       - medisync-network
 
+  # MediSync AI Care Companion (FastAPI + Qwen2.5:1.5b via Ollama)
+  ai-service:
+    build:
+      context: ./ai-service
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    environment:
+      - MONGO_URI=${MONGO_URI:-mongodb://mongo:27017/medisync}
+      - OLLAMA_URL=${OLLAMA_URL:-http://host.docker.internal:11434}
+      - NODE_API_BASE=http://api-gateway:5000/api/v1
+      - OLLAMA_MODEL=${OLLAMA_MODEL:-qwen2.5:1.5b}
+      - OLLAMA_NUM_CTX=${OLLAMA_NUM_CTX:-512}
+      - FASTAPI_HOST=0.0.0.0
+      - FASTAPI_PORT=8000
+    depends_on:
+      - mongo
+    networks:
+      - medisync-network
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
   # Database
   mongo:
     image: mongo:latest
@@ -64,3 +87,4 @@ networks:
 
 volumes:
   mongo-data:
+

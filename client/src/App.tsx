@@ -7,6 +7,7 @@ import Header from './components/layout/Header'
 import Login from './pages/Login'
 import Register from './pages/Register'
 import PatientDashboard from './pages/PatientDashboard'
+import AiCompanionPage from './pages/AiCompanionPage'
 import DoctorDashboard from './pages/DoctorDashboard'
 import ConsultationView from './pages/doctor/ConsultationView'
 import StaffDashboard from './pages/StaffDashboard'
@@ -73,6 +74,14 @@ function AppRoutes() {
         element={
           <PrivateRoute allowedRoles={['patient']}>
             <PatientDashboard />
+          </PrivateRoute>
+        }
+      />
+      <Route
+        path="/patient/ai-companion"
+        element={
+          <PrivateRoute allowedRoles={['patient']}>
+            <AiCompanionPage />
           </PrivateRoute>
         }
       />

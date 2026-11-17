@@ -11,7 +11,8 @@ import {
   BeakerIcon,
   ArchiveBoxIcon,
   UserIcon,
-  ExclamationTriangleIcon
+  ExclamationTriangleIcon,
+  SparklesIcon
 } from '@heroicons/react/24/outline';
 
 /**
@@ -52,7 +53,11 @@ const Sidebar = () => {
       { name: 'My Patients', path: '/nurse/dashboard', icon: UserIcon },
       { name: 'Triage Queue', path: '/triage', icon: ExclamationTriangleIcon }
     ],
-    // Add Patient arrays as needed...
+    patient: [
+      { name: 'Dashboard', path: '/patient/dashboard', icon: HomeIcon },
+      { name: 'Appointments', path: '/appointments', icon: CalendarIcon },
+      { name: 'AI Care Companion', path: '/patient/ai-companion', icon: SparklesIcon },
+    ],
   };
 
   const linksToRender = navItems[roleKey] || navItems.admin;

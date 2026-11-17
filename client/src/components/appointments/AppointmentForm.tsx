@@ -92,10 +92,11 @@ export default function AppointmentForm({ onSuccess, onCancel, patientId }: Appo
     setSelectedDate(date)
     setSelectedSlot('')
     try {
-      const response = await appointmentsApi.getAvailableSlots(doctorId, date)
+      const response = await doctorsApi.getSlots(doctorId, date)
       setAvailableSlots(response.data)
     } catch (error) {
       console.error('Failed to fetch slots:', error)
+      toast.error('Failed to load appointment slots')
     }
   }
 
@@ -316,25 +317,30 @@ export default function AppointmentForm({ onSuccess, onCancel, patientId }: Appo
                        
                        {availableSlots.length > 0 && (
                          <div className="grid grid-cols-3 gap-2 max-h-[140px] overflow-y-auto pr-1">
-                           {availableSlots.map((slot, index) => {
-                             const slotKey = `${slot.time} - ${slot.endTime}`;
-                             return (
-                               <button
-                                 key={index}
-                                 onClick={() => setSelectedSlot(slotKey)}
-                                 disabled={!slot.available}
-                                 className={`px-2 py-1.5 text-xs text-center rounded-lg border transition ${
-                                   selectedSlot === slotKey
-                                     ? 'bg-primary-600 text-white border-primary-600'
-                                     : slot.available
-                                     ? 'border-gray-300 hover:border-primary-500 hover:bg-primary-50 bg-white'
-                                     : 'border-gray-200 bg-gray-100 text-gray-400 cursor-not-allowed'
-                                 }`}
-                               >
-                                 {slot.time}
-                               </button>
-                             )
-                           })}
+                            {availableSlots.map((slot, index) => {
+                              const slotKey = `${slot.time} - ${slot.endTime}`;
+                              const isAvailable = slot.isAvailable ?? slot.available ?? false;
+                              return (
+                                <button
+                                  key={index}
+                                  onClick={() => setSelectedSlot(slotKey)}
+                                  disabled={!isAvailable}
+                                  className={`px-2 py-1.5 text-xs text-center rounded-lg border transition ${
+                                    selectedSlot === slotKey
+                                      ? 'bg-primary-600 text-white border-primary-600'
+                                      : isAvailable
+                                      ? 'border-green-300 bg-green-50 text-green-700 hover:border-green-500 hover:bg-green-100'
+                                      : 'border-gray-200 bg-gray-100 text-gray-400 cursor-not-allowed'
+                                  }`}
+                                  title={isAvailable ? 'Available' : 'Booked or unavailable'}
+                                >
+                                  <span className="block">{slot.time}</span>
+                                  <span className="block text-[10px] font-medium">
+                                    {isAvailable ? 'Available' : 'Booked'}
+                                  </span>
+                                </button>
+                              )
+                            })}
                          </div>
                        )}
                     </div>

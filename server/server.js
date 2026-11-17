@@ -201,16 +201,27 @@
   app.set('io', io);
 
   // Database connection
-  const PORT = process.env.PORT || 5000;
-  mongoose.connect(process.env.MONGO_URI)
-    .then(() => {
-      console.log('Connected to MongoDB');
-      server.listen(PORT, () => {
-        console.log(`Server running on port ${PORT}`);
-      });
-    })
-    .catch((err) => {
-      console.error('MongoDB connection error:', err);
-    });
+ 
+// Database connection
+const PORT = process.env.PORT || 5000;
 
-  module.exports = { app, server };
+console.log("Starting MongoDB connection...");
+console.log("MONGO_URI configured:", Boolean(process.env.MONGO_URI));
+
+mongoose.connect(process.env.MONGO_URI, {
+  serverSelectionTimeoutMS: 10000,
+  connectTimeoutMS: 10000
+})
+  .then(() => {
+    console.log("Connected to MongoDB");
+
+    server.listen(PORT, () => {
+      console.log(`Server running on port ${PORT}`);
+    });
+  })
+  .catch((err) => {
+    console.error("MongoDB connection error:", err.name);
+    console.error("Error details:", err.message);
+  });
+
+module.exports = { app, server };

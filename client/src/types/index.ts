@@ -198,10 +198,10 @@ export interface Billing {
   discount: number
   total: number
   paymentStatus: 'pending' | 'partial' | 'paid' | 'refunded'
-  paymentMethod?: 'cash' | 'card' | 'insurance' | 'online' | 'other'
+  paymentMethod?: 'cash' | 'card' | 'upi' | 'insurance' | 'online' | 'other'
   payments?: Array<{
     amount: number
-    method: string
+    method: 'cash' | 'card' | 'upi' | 'insurance' | 'online' | 'other'
     transactionId?: string
     paidAt: string
   }>
@@ -239,7 +239,8 @@ export interface TimeSlot {
   endTime: string
   startTime?: string
   endTime24?: string
-  available: boolean
+  isAvailable: boolean
+  available?: boolean
 }
 
 export interface AuthResponse {

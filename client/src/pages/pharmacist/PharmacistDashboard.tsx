@@ -68,7 +68,7 @@ export default function PharmacistDashboard() {
 
     searchTimeout.current = setTimeout(async () => {
       try {
-        const res = await pharmacistApi.searchMedicines(q)
+        const res = await pharmacistApi.searchMedicines(q, 50)
         setSearchResults(prev => ({ ...prev, [appointmentId]: res.data.data }))
       } catch (err) {
         console.error(err)

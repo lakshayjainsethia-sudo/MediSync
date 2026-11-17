@@ -8,7 +8,11 @@ const { protect, authorize } = require('../middleware/auth');
 // @access  Private (Doctor, Admin)
 router.get('/nurses', protect, authorize('doctor', 'admin'), async (req, res, next) => {
   try {
-    const nurses = await User.find({ role: { $regex: /^nurse$/i } }).select('_id name email');
+    const nurses = await User.find({
+      role: { $regex: /^nurse$/i },
+      isApproved: true,
+      isActive: { $ne: false }
+    }).select('_id name email');
     res.status(200).json({
       success: true,
       count: nurses.length,

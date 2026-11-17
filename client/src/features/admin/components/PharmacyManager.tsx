@@ -27,7 +27,7 @@ export default function PharmacyManager() {
   const fetchMedicines = async () => {
     setLoading(true)
     try {
-      const res = await pharmacistApi.searchMedicines('')
+      const res = await pharmacistApi.getMedicines({ limit: 1000 })
       setMedicines(res.data?.data || res.data || [])
     } catch (err) {
       toast.error('Failed to load medicines')

@@ -33,7 +33,7 @@ const billingSchema = new mongoose.Schema({
   },
   tax: {
     type: Number,
-    default: 0.18, // 18% GST
+    default: 0,
     min: 0
   },
   generatedBy: {
@@ -52,7 +52,7 @@ const billingSchema = new mongoose.Schema({
   },
   paymentMethod: {
     type: String,
-    enum: ['cash', 'card', 'insurance', 'online', 'other']
+    enum: ['cash', 'card', 'upi', 'insurance', 'online', 'other']
   },
   payments: [{
     amount: {
@@ -62,7 +62,7 @@ const billingSchema = new mongoose.Schema({
     },
     method: {
       type: String,
-      enum: ['cash', 'card', 'insurance', 'online', 'other']
+      enum: ['cash', 'card', 'upi', 'insurance', 'online', 'other']
     },
     transactionId: String,
     paidAt: {

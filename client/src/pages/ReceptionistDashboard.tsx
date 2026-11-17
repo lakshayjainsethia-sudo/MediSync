@@ -29,6 +29,7 @@ export default function ReceptionistDashboard() {
   const navigate = useNavigate()
   const [billingQueue, setBillingQueue] = useState<any[]>([])
   const [additionalCharges, setAdditionalCharges] = useState<Record<string, any[]>>({})
+  const [billingOptions, setBillingOptions] = useState<Record<string, { tax: string; paymentMethod: string }>>({})
   const [expandedCards, setExpandedCards] = useState<Record<string, boolean>>({})
 
   useEffect(() => {
@@ -63,8 +64,14 @@ export default function ReceptionistDashboard() {
   const handleGenerateFinalBill = async (appointmentId: string) => {
     try {
       const charges = additionalCharges[appointmentId] || []
+      const options = billingOptions[appointmentId] || { tax: '0', paymentMethod: 'cash' }
       const res = await billingApi.generateFinal(
-        { appointmentId, additionalCharges: charges }
+        {
+          appointmentId,
+          additionalCharges: charges,
+          tax: Number(options.tax) || 0,
+          paymentMethod: options.paymentMethod
+        }
       )
       
       const billNumber = res.data.bill.invoiceNumber || res.data.bill._id
@@ -107,6 +114,17 @@ export default function ReceptionistDashboard() {
     setAdditionalCharges(prev => ({
       ...prev,
       [appointmentId]: list
+    }))
+  }
+
+  const updateBillingOption = (appointmentId: string, field: 'tax' | 'paymentMethod', value: string) => {
+    setBillingOptions(prev => ({
+      ...prev,
+      [appointmentId]: {
+        tax: prev[appointmentId]?.tax ?? '0',
+        paymentMethod: prev[appointmentId]?.paymentMethod ?? 'cash',
+        [field]: value
+      }
     }))
   }
 
@@ -187,8 +205,11 @@ export default function ReceptionistDashboard() {
                 const docFee = apt.doctor?.consultationFee || 0;
                 const medSub = apt.medicineBill?.subtotal || 0;
                 const charges = additionalCharges[apt._id] || [];
+                const options = billingOptions[apt._id] || { tax: '0', paymentMethod: 'cash' };
                 const validChargesTotal = charges.reduce((acc, curr) => acc + (Number(curr.amount) || 0), 0);
-                const total = docFee + medSub + validChargesTotal;
+                const subtotal = docFee + medSub + validChargesTotal;
+                const gstAmount = subtotal * ((Number(options.tax) || 0) / 100);
+                const total = subtotal + gstAmount;
                 const isExpanded = expandedCards[apt._id] || false;
 
                 const waitMins = Math.floor((Date.now() - new Date(apt.medicineBill?.generatedAt || apt.createdAt).getTime()) / 60000);
@@ -242,8 +263,39 @@ export default function ReceptionistDashboard() {
                           ))}
                         </div>
 
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 border-t border-slate-200 pt-3 mb-3">
+                          <div>
+                            <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">GST (%)</label>
+                            <input
+                              type="number"
+                              min="0"
+                              step="0.01"
+                              value={options.tax}
+                              onChange={(e) => updateBillingOption(apt._id, 'tax', e.target.value)}
+                              className="w-full text-sm border border-slate-300 rounded px-3 py-2 bg-white"
+                              placeholder="Enter GST manually"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">Payment Mode</label>
+                            <select
+                              value={options.paymentMethod}
+                              onChange={(e) => updateBillingOption(apt._id, 'paymentMethod', e.target.value)}
+                              className="w-full text-sm border border-slate-300 rounded px-3 py-2 bg-white"
+                            >
+                              <option value="cash">Cash</option>
+                              <option value="card">Card</option>
+                              <option value="upi">UPI</option>
+                            </select>
+                          </div>
+                          <div className="md:col-span-2 flex justify-between text-sm text-slate-600">
+                            <span>GST Amount</span>
+                            <span>₹{gstAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+                          </div>
+                        </div>
+
                         <div className="flex justify-between items-center border-t border-slate-200 pt-3">
-                          <span className="text-lg font-bold text-slate-900">Estimated Total</span>
+                          <span className="text-lg font-bold text-slate-900">Final Total</span>
                           <span className="text-xl font-bold text-emerald-600">₹{total.toLocaleString('en-IN')}</span>
                         </div>
 

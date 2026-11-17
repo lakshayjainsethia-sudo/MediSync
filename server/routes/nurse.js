@@ -12,10 +12,11 @@ router.get('/my-patients', [protect, authorize('nurse', 'admin'), applyRoleProje
   try {
     const appointments = await Appointment.find({
       assignedNurse: req.user.id,
-      status: { $in: ['Confirmed', 'Active', 'Billing_Pending'] }
+      status: { $in: ['scheduled', 'Confirmed', 'Active', 'Billing_Pending'] }
     })
       .populate('patient', 'name age')
-      .populate('assignedDoctor', 'name specialization')
+      .populate('doctor', 'name specialization')
+      .populate('assignedNurse', 'name')
       .select(req.fieldProjection);
 
     // Compute vitalsToday locally without writing a new pipeline
@@ -55,10 +56,10 @@ router.get('/my-patients', [protect, authorize('nurse', 'admin'), applyRoleProje
 router.get('/all-appointments', [protect, authorize('nurse', 'admin'), applyRoleProjection], async (req, res) => {
   try {
     const appointments = await Appointment.find({
-      status: { $in: ['Confirmed', 'Active'] }
+      status: { $in: ['scheduled', 'Confirmed', 'Active'] }
     })
       .populate('patient', 'name age')
-      .populate('assignedDoctor', 'name specialization')
+      .populate('doctor', 'name specialization')
       .populate('assignedNurse', 'name')
       .select(req.fieldProjection)
       .sort({ weightedScore: -1 });
@@ -85,7 +86,8 @@ router.get('/upcoming-appointments', [protect, authorize('nurse', 'admin'), appl
       date: { $gte: today, $lt: tomorrow }
     })
       .populate('patient', 'name age')
-      .populate('assignedDoctor', 'name specialization')
+      .populate('doctor', 'name specialization')
+      .populate('assignedNurse', 'name')
       .select(req.fieldProjection)
       .sort({ startTime: 1 });
 

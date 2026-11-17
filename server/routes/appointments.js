@@ -9,6 +9,33 @@ const applyRoleProjection = require('../middleware/applyRoleProjection');
 const { logAudit } = require('../utils/auditLogger');
 const { validateAppointmentInput } = require('../middleware/validate');
 
+const SHIFT_START_MINUTES = 9 * 60;
+const SHIFT_END_MINUTES = 17 * 60;
+const SLOT_INTERVAL_MINUTES = 30;
+
+function getDateBounds(dateString) {
+  const selectedDate = new Date(`${dateString}T00:00:00`);
+  if (Number.isNaN(selectedDate.getTime())) {
+    return null;
+  }
+
+  const start = new Date(selectedDate);
+  start.setHours(0, 0, 0, 0);
+
+  const end = new Date(selectedDate);
+  end.setHours(23, 59, 59, 999);
+
+  return { selectedDate, start, end };
+}
+
+function toMinutes(time) {
+  const [hours, minutes] = (time || '').split(':').map(Number);
+  if (!Number.isInteger(hours) || !Number.isInteger(minutes)) {
+    return null;
+  }
+  return hours * 60 + minutes;
+}
+
 // @route   POST /api/appointments
 // @desc    Create a new appointment
 // @access  Private
@@ -40,10 +67,35 @@ router.post(
         return res.status(400).json({ message: 'Doctor not found or not approved' });
       }
       
-      // Check for existing appointment at the same time
+      const bounds = getDateBounds(date);
+      if (!bounds) {
+        return res.status(400).json({ message: 'Invalid appointment date' });
+      }
+
+      const startMinutes = toMinutes(startTime);
+      const endMinutes = toMinutes(endTime);
+      if (
+        startMinutes === null ||
+        endMinutes === null ||
+        startMinutes < SHIFT_START_MINUTES ||
+        endMinutes > SHIFT_END_MINUTES ||
+        endMinutes <= startMinutes ||
+        (startMinutes - SHIFT_START_MINUTES) % SLOT_INTERVAL_MINUTES !== 0
+      ) {
+        return res.status(400).json({ message: 'Invalid appointment slot' });
+      }
+
+      const appointmentDateTime = new Date(bounds.selectedDate);
+      appointmentDateTime.setHours(Math.floor(startMinutes / 60), startMinutes % 60, 0, 0);
+
+      if (appointmentDateTime <= new Date()) {
+        return res.status(400).json({ message: 'Cannot book a past time slot' });
+      }
+
+      // Re-check the exact slot at booking time to prevent double booking.
       const existingAppointment = await Appointment.findOne({
         doctor,
-        date,
+        date: { $gte: bounds.start, $lte: bounds.end },
         startTime,
         status: { $ne: 'cancelled' }
       });
@@ -255,7 +307,8 @@ router.get(
       const appointment = await Appointment.findById(req.params.id)
         .select(req.fieldProjection)
         .populate('doctor', 'name specialization')
-        .populate('patient', 'name email phone');
+        .populate('patient', 'name email phone')
+        .populate('assignedNurse', 'name email');
         
       if (!appointment) {
         return res.status(404).json({ message: 'Appointment not found' });
@@ -554,6 +607,9 @@ router.patch(
       await appointment.save();
 
       await logAudit('NURSE_ASSIGNED', req, appointment._id, 'Appointment', { nurseId, nurseName: nurse.name });
+      await appointment.populate('patient', 'name email phone');
+      await appointment.populate('doctor', 'name specialization');
+      await appointment.populate('assignedNurse', 'name email');
 
       const io = req.app.get('io');
       if (io) {
@@ -595,6 +651,8 @@ router.patch(
 
       appointment.assignedNurse = null;
       await appointment.save();
+      await appointment.populate('patient', 'name email phone');
+      await appointment.populate('doctor', 'name specialization');
 
       await logAudit('NURSE_UNASSIGNED', req, appointment._id, 'Appointment', {});
 

@@ -68,7 +68,7 @@ class BillingService {
 
   /**
    * Generates a comprehensive bill structure. 
-   * Includes medicine costs, consultation fee, and automatically applies 18% GST on the subtotal.
+   * Includes medicine costs and consultation fee. GST should be supplied manually by billing staff.
    * 
    * @param {string} patientId - Reference to User
    * @param {Array} medicineItems - Array of { medicineId, quantity }
@@ -105,10 +105,8 @@ class BillingService {
       subTotal += lineTotal;
     }
 
-    // Tax calculation (18% GST)
-    const GST_RATE = 0.18;
-    const tax = parseFloat((subTotal * GST_RATE).toFixed(2));
-    const totalAmount = parseFloat((subTotal + tax).toFixed(2));
+    const tax = 0;
+    const totalAmount = parseFloat(subTotal.toFixed(2));
 
     // Prepare bill document structure matching Model
     const billData = {
@@ -132,7 +130,7 @@ class BillingService {
         date: new Date().toISOString(),
         items: items.map(i => `${i.name} (Qty: ${i.qty}) - $${i.price}`),
         subTotal: `$${subTotal}`,
-        gstTax: `18% - $${tax}`,
+        gstTax: `Manual GST - $${tax}`,
         grandTotal: `$${totalAmount}`,
         status: newBill.paymentStatus,
         footer: 'Thank you for choosing MediSync'
