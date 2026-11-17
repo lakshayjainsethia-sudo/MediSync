@@ -27,7 +27,7 @@ ROUTING_TABLE = [
         "get_patient_summary",
         [
             # Require "my" or "health" to avoid matching generic uses of "summary"
-            "health summary", "medical summary", "my summary",
+            "health summary", "medical summary", "my summary", "summary of my health", "summary of health",
             "overview of my health", "everything about me",
             "full report", "all my info", "complete health",
         ],
@@ -37,7 +37,8 @@ ROUTING_TABLE = [
         [
             "prescription", "medicine", "medication", "drug", "tablet",
             "capsule", "dose", "dosage", "pill", "syrup", "prescribed",
-            "what am i taking", "what should i take",
+            "what am i taking", "what should i take", "when should i take",
+            "dolo", "metrocil", "how to take", "take my",
         ],
     ),
     (
