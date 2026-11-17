@@ -2,9 +2,9 @@ const mongoose = require('mongoose');
 
 const auditLogSchema = new mongoose.Schema({
   action: { type: String, required: true },
-  performedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+  performedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: false, default: null },
   role: { type: String, required: true },
-  targetId: { type: mongoose.Schema.Types.ObjectId, required: true },
+  targetId: { type: mongoose.Schema.Types.ObjectId, required: false, default: null },
   targetModel: { type: String, enum: ['Appointment', 'Billing', 'Equipment', 'User', 'System'] },
   metadata: { type: mongoose.Schema.Types.Mixed },
   ip: { type: String },

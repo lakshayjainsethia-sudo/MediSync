@@ -50,14 +50,31 @@ const csrfProtection = (req, res, next) => {
   // 4. Origin/Referer Validation (Defense in Depth)
   const origin = req.headers.origin;
   const referer = req.headers.referer;
-  const allowedOrigin = process.env.CLIENT_URL || 'http://localhost:5173';
 
-  if (origin && !origin.startsWith(allowedOrigin)) {
+  // Support array of allowed local development origins matching corsOptions
+  const defaultAllowedOrigins = [
+    'http://localhost:5173',
+    'http://localhost:5174',
+    'http://localhost:5175',
+    'http://localhost:5176',
+    'http://127.0.0.1:5173',
+    'http://127.0.0.1:5174'
+  ];
+
+  const isAllowedOrigin = (url) => {
+    if (!url) return false;
+    if (process.env.CLIENT_URL && url.startsWith(process.env.CLIENT_URL)) {
+      return true;
+    }
+    return defaultAllowedOrigins.some(allowed => url.startsWith(allowed));
+  };
+
+  if (origin && !isAllowedOrigin(origin)) {
     securityLogger.warn('CSRF Origin Validation Failed', { origin, ip: req.ip });
     return res.status(403).json({ error: 'Origin not allowed' });
   }
 
-  if (!origin && referer && !referer.startsWith(allowedOrigin)) {
+  if (!origin && referer && !isAllowedOrigin(referer)) {
     securityLogger.warn('CSRF Referer Validation Failed', { referer, ip: req.ip });
     return res.status(403).json({ error: 'Referer not allowed' });
   }
