@@ -4,10 +4,11 @@ import { useNavigate } from 'react-router-dom'
 import { toast } from 'react-toastify'
 import { appointmentsApi, doctorsApi } from '../utils/api'
 import { Appointment, User } from '../types'
-import { Calendar, Clock, User as UserIcon, Plus, X, FileText, Pill, Check, Star } from 'lucide-react'
+import { Calendar, Clock, User as UserIcon, Plus, X, FileText, Pill, Check, Star, Sparkles, MessageSquare } from 'lucide-react'
 import Button from '../components/ui/Button'
 import { format } from 'date-fns'
 import AppointmentForm from '../components/appointments/AppointmentForm'
+import AiCompanion from '../components/AiCompanion/AiCompanion'
 
 export default function PatientDashboard() {
   const { user } = useAuth()
@@ -15,6 +16,7 @@ export default function PatientDashboard() {
   const [appointments, setAppointments] = useState<Appointment[]>([])
   const [topDoctors, setTopDoctors] = useState<User[]>([])
   const [showBookingModal, setShowBookingModal] = useState(false)
+  const [showAiModal, setShowAiModal] = useState(false)
   
   // Rating state
   const [ratingModal, setRatingModal] = useState<{ isOpen: boolean; appointmentId: string; doctorName: string }>({ isOpen: false, appointmentId: '', doctorName: '' })
@@ -83,7 +85,14 @@ export default function PatientDashboard() {
           <p className="text-slate-600 mt-1">Welcome, {user?.name}</p>
         </div>
         {/* Quick Actions */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+        <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-6">
+          <Button
+            onClick={() => setShowAiModal(true)}
+            className="w-full bg-gradient-to-r from-blue-600 to-teal-500 hover:from-blue-700 hover:to-teal-600 text-white shadow-md border-0"
+          >
+            <Sparkles className="h-5 w-5 mr-2" />
+            AI Care Companion
+          </Button>
           <Button
             onClick={() => setShowBookingModal(true)}
             className="w-full"
@@ -290,7 +299,93 @@ export default function PatientDashboard() {
             </div>
           </div>
         </div>
+
+        {/* AI Care Companion Banner */}
+        <div className="mt-8 bg-gradient-to-r from-blue-900/90 via-indigo-900/90 to-teal-900/90 text-white rounded-2xl p-6 shadow-xl border border-white/10 flex flex-col md:flex-row items-center justify-between gap-4">
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-400 to-teal-300 flex items-center justify-center flex-shrink-0 shadow-lg">
+              <Sparkles className="h-6 w-6 text-slate-950" />
+            </div>
+            <div>
+              <h2 className="text-xl font-bold text-white flex items-center gap-2">
+                MediSync AI Care Companion
+                <span className="text-xs bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 px-2 py-0.5 rounded-full font-medium">Local & Private</span>
+              </h2>
+              <p className="text-sm text-slate-300 mt-1">
+                Have questions about your prescriptions, past consultations, or health records? Ask your personal AI assistant anytime.
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-3 w-full md:w-auto">
+            <Button
+              onClick={() => setShowAiModal(true)}
+              className="bg-white text-slate-900 hover:bg-slate-100 font-semibold shadow-md whitespace-nowrap"
+            >
+              <MessageSquare className="h-4 w-4 mr-2 text-blue-600" />
+              Chat on Dashboard
+            </Button>
+            <Button
+              variant="outline"
+              onClick={() => navigate('/patient/ai-companion')}
+              className="border-white/30 text-white hover:bg-white/10 whitespace-nowrap"
+            >
+              Full Page View
+            </Button>
+          </div>
+        </div>
       </div>
+
+      {/* Floating Chat Button (Bottom Right) */}
+      <button
+        onClick={() => setShowAiModal(true)}
+        className="fixed bottom-6 right-6 z-40 bg-gradient-to-r from-blue-600 to-teal-500 hover:from-blue-700 hover:to-teal-600 text-white p-4 rounded-full shadow-2xl transition-all duration-300 hover:scale-105 flex items-center gap-2 group border border-white/20"
+        title="Open AI Care Companion"
+      >
+        <Sparkles className="h-6 w-6 animate-pulse" />
+        <span className="max-w-0 overflow-hidden whitespace-nowrap group-hover:max-w-xs transition-all duration-300 ease-in-out font-medium text-sm pr-1">
+          Ask AI Companion
+        </span>
+      </button>
+
+      {/* AI Care Companion Modal */}
+      {showAiModal && (
+        <div className="fixed inset-0 bg-slate-950/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-4xl w-full h-[85vh] flex flex-col overflow-hidden border border-slate-200 animate-in fade-in zoom-in-95 duration-200">
+            <div className="px-6 py-3.5 border-b border-gray-200 flex justify-between items-center bg-slate-50">
+              <div className="flex items-center gap-2">
+                <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-blue-500 to-teal-400 flex items-center justify-center">
+                  <Sparkles className="h-4 w-4 text-white" />
+                </div>
+                <div>
+                  <h3 className="text-base font-semibold text-slate-900">AI Care Companion</h3>
+                  <p className="text-xs text-slate-500">Integrated Patient Health Assistant</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => {
+                    setShowAiModal(false)
+                    navigate('/patient/ai-companion')
+                  }}
+                  className="text-xs text-blue-600 hover:text-blue-800 hover:underline px-2 py-1"
+                >
+                  Open Full Page
+                </button>
+                <button
+                  onClick={() => setShowAiModal(false)}
+                  className="text-gray-400 hover:text-slate-600 p-1.5 rounded-lg hover:bg-slate-100 transition"
+                  aria-label="Close"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
+            </div>
+            <div className="flex-1 overflow-hidden p-2 bg-slate-100">
+              <AiCompanion />
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Booking Modal */}
       {showBookingModal && (
