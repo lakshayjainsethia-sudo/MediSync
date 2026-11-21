@@ -59,6 +59,83 @@ export interface PatientDocument {
 /**
  * Send a message and receive an AI response with grounded document citations.
  */
+
+export interface StreamCallbacks {
+  onMetadata?: (data: { conversation_id: string; tool_used: string; citations: CitationItem[] }) => void;
+  onChunk?: (chunk: string) => void;
+  onDone?: (conversation_id: string) => void;
+  onError?: (err: any) => void;
+}
+
+/**
+ * Stream an AI response in real time via Server-Sent Events (SSE).
+ */
+export async function sendMessageStream(
+  message: string,
+  conversationId: string | undefined,
+  callbacks: StreamCallbacks
+): Promise<void> {
+  const token = localStorage.getItem('token');
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+  };
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+
+  const response = await fetch('/api/v1/intelligence/chat/stream', {
+    method: 'POST',
+    headers,
+    body: JSON.stringify({
+      message,
+      ...(conversationId ? { conversation_id: conversationId } : {}),
+    }),
+  });
+
+  if (!response.ok) {
+    throw new Error(`HTTP ${response.status}`);
+  }
+
+  const reader = response.body?.getReader();
+  if (!reader) throw new Error('No readable stream available');
+
+  const decoder = new TextDecoder('utf-8');
+  let buffer = '';
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+
+    buffer += decoder.decode(value, { stream: true });
+    const lines = buffer.split('\n');
+    buffer = lines.pop() || '';
+
+    for (const line of lines) {
+      const trimmed = line.trim();
+      if (!trimmed.startsWith('data:')) continue;
+      const jsonStr = trimmed.replace(/^data:\s*/, '');
+      try {
+        const event = JSON.parse(jsonStr);
+        if (event.type === 'metadata') {
+          callbacks.onMetadata?.({
+            conversation_id: event.conversation_id,
+            tool_used: event.tool_used,
+            citations: event.citations || [],
+          });
+        } else if (event.type === 'chunk') {
+          callbacks.onChunk?.(event.text);
+        } else if (event.type === 'done') {
+          callbacks.onDone?.(event.conversation_id);
+        } else if (event.type === 'error') {
+          callbacks.onError?.(new Error(event.text || 'Error during streaming'));
+        }
+      } catch (parseErr) {
+        // partial line
+      }
+    }
+  }
+}
+
 export async function sendMessage(
   message: string,
   conversationId?: string

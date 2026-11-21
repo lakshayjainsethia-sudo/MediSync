@@ -1,39 +1,89 @@
 """
-Ollama LLM provider using /api/generate endpoint.
+Ollama LLM provider using /api/generate endpoint with crisp response prompting and streaming support.
 """
 
 import json
 import httpx
+from typing import AsyncGenerator
 from app.config import settings
 
 
-SYSTEM_PROMPT = """You are MediSync AI Care Companion, an intelligent and compassionate healthcare assistant for the patient.
+SYSTEM_PROMPT = """You are MediSync AI Care Companion, an intelligent healthcare assistant.
 
-CAPABILITIES & SCOPE:
-1. Patient Records: You have secure access to the patient's prescriptions, medical records, past doctor visits, allergies, and diagnostic reports. Use them to answer questions clearly.
-2. General Health Queries: You can answer general health questions, explain medical terminology, lifestyle recommendations, how medications work, side effects, and diet/exercise guidance.
-3. Clarity: Speak in empathetic, clear, everyday English. If clinical terms are needed, explain them simply.
+COMMUNICATION STYLE (CRITICAL):
+- Be CRISP, CONCISE, and DIRECT. 
+- Cover ONLY the essential, high-value clinical points. Avoid filler phrases, conversational fluff, or repetitive intros/outros.
+- Use clear bullet points with bold keywords for readability.
+- Keep responses to 2 to 4 key bullet points whenever possible.
+
+CAPABILITIES:
+1. Patient Records: Explain prescriptions (dosage, frequency, duration), medical records, previous doctor visits, allergies, and diagnostic reports concisely.
+2. General Health Queries: Provide direct, evidence-based wellness, nutrition, lifestyle, or medication education.
 
 SAFETY BOUNDARIES:
-- You never make a brand-new definitive clinical diagnosis. If the patient has severe new symptoms, provide supportive educational guidance and urge them to consult their physician.
-- In emergencies (e.g., severe chest pain, inability to breathe, loss of consciousness), immediately advise calling emergency medical services.
+- Never make a definitive new diagnosis. If symptoms are ambiguous or concerning, recommend doctor review in one brief bullet.
+- In emergencies (e.g. chest pain, severe shortness of breath), immediately advise emergency services.
 """
 
 
-async def generate_response(prompt: str, context_data: str = "") -> str:
+async def stream_response(prompt: str, context_data: str = "") -> AsyncGenerator[str, None]:
     """
-    Call Ollama /api/generate with injected context data.
+    Stream tokens from Ollama /api/generate as an async generator.
+    Yields text chunks as they arrive.
     """
     if context_data:
         full_prompt = (
             f"[PATIENT MEDICAL CONTEXT]\n{context_data}\n[END PATIENT MEDICAL CONTEXT]\n\n"
             f"Patient Query: {prompt}\n\n"
-            "Instructions: Provide a helpful, clear, and reassuring answer based on the medical context above and general medical knowledge."
+            "Instructions: Provide a crisp, bulleted, and direct answer covering only key points."
         )
     else:
         full_prompt = (
             f"Patient Query: {prompt}\n\n"
-            "Instructions: Provide an informative, empathetic, and scientifically accurate answer to the patient's general health or wellness query."
+            "Instructions: Provide a crisp, bulleted, and direct answer covering only key points."
+        )
+
+    payload = {
+        "model": settings.ollama_model,
+        "prompt": full_prompt,
+        "system": SYSTEM_PROMPT,
+        "stream": True,
+        "options": {
+            "temperature": settings.ollama_temperature,
+            "num_predict": settings.ollama_num_predict,
+            "num_ctx": settings.ollama_num_ctx,
+        },
+    }
+
+    async with httpx.AsyncClient(timeout=120.0) as client:
+        async with client.stream("POST", f"{settings.ollama_url}/api/generate", json=payload) as response:
+            response.raise_for_status()
+            async for line in response.aiter_lines():
+                if not line:
+                    continue
+                try:
+                    data = json.loads(line)
+                    chunk = data.get("response", "")
+                    if chunk:
+                        yield chunk
+                except Exception:
+                    continue
+
+
+async def generate_response(prompt: str, context_data: str = "") -> str:
+    """
+    Non-streaming fallback for /api/generate.
+    """
+    if context_data:
+        full_prompt = (
+            f"[PATIENT MEDICAL CONTEXT]\n{context_data}\n[END PATIENT MEDICAL CONTEXT]\n\n"
+            f"Patient Query: {prompt}\n\n"
+            "Instructions: Provide a crisp, bulleted, and direct answer covering only key points."
+        )
+    else:
+        full_prompt = (
+            f"Patient Query: {prompt}\n\n"
+            "Instructions: Provide a crisp, bulleted, and direct answer covering only key points."
         )
 
     payload = {

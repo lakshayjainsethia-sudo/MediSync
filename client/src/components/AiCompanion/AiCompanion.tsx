@@ -8,7 +8,7 @@
 import React, { useState, useRef, useEffect, useCallback } from "react";
 import { useAuth } from "../../context/AuthContext";
 import {
-  sendMessage,
+  sendMessageStream,
   type ChatMessage,
   type CitationItem,
 } from "../../api/aiCompanionApi";
@@ -64,29 +64,77 @@ export const AiCompanion: React.FC = () => {
     setInput("");
     setLoading(true);
 
-    addMessage({ role: "user", content: text, timestamp: new Date().toISOString() });
+    const userMsgTime = new Date().toISOString();
+    addMessage({ role: "user", content: text, timestamp: userMsgTime });
+
+    const assistantMsgId = `${Date.now()}-assistant`;
+    // Create an initial placeholder assistant message for live streaming
+    setMessages((prev) => [
+      ...prev,
+      {
+        id: assistantMsgId,
+        role: "assistant",
+        content: "",
+        timestamp: new Date().toISOString(),
+      },
+    ]);
 
     try {
-      const result = await sendMessage(text, conversationId);
-      setConversationId(result.conversation_id);
-      addMessage({
-        role: "assistant",
-        content: result.response,
-        timestamp: new Date().toISOString(),
-        tool_used: result.tool_used,
-        citations: result.citations,
-        error: result.error ?? undefined,
+      await sendMessageStream(text, conversationId, {
+        onMetadata: (meta) => {
+          setConversationId(meta.conversation_id);
+          setMessages((prev) =>
+            prev.map((m) =>
+              m.id === assistantMsgId
+                ? {
+                    ...m,
+                    tool_used: meta.tool_used,
+                    citations: meta.citations,
+                  }
+                : m
+            )
+          );
+        },
+        onChunk: (chunk) => {
+          setMessages((prev) =>
+            prev.map((m) =>
+              m.id === assistantMsgId
+                ? {
+                    ...m,
+                    content: m.content + chunk,
+                  }
+                : m
+            )
+          );
+        },
+        onDone: (newConvoId) => {
+          if (newConvoId) setConversationId(newConvoId);
+        },
+        onError: (err) => {
+          setMessages((prev) =>
+            prev.map((m) =>
+              m.id === assistantMsgId
+                ? {
+                    ...m,
+                    content: m.content || "I'm having trouble responding right now. Please try again in a moment.",
+                  }
+                : m
+            )
+          );
+        },
       });
     } catch (err: any) {
       const errorMsg =
-        err?.response?.status === 401
+        err?.message?.includes("401")
           ? "Your session has expired. Please log in again."
           : "I'm having trouble responding right now. Please try again in a moment.";
-      addMessage({
-        role: "assistant",
-        content: errorMsg,
-        timestamp: new Date().toISOString(),
-      });
+      setMessages((prev) =>
+        prev.map((m) =>
+          m.id === assistantMsgId
+            ? { ...m, content: errorMsg }
+            : m
+        )
+      );
     } finally {
       setLoading(false);
       inputRef.current?.focus();

@@ -12,10 +12,12 @@ Provides:
 
 import httpx
 from fastapi import APIRouter, HTTPException, Header, UploadFile, File, Form
+from fastapi.responses import StreamingResponse
+import json
 from pydantic import BaseModel, Field
 from typing import Optional, List, Dict, Any
 
-from app.agent.orchestrator import process_message
+from app.agent.orchestrator import process_message, process_message_stream
 from app.rag.pipeline import (
     ingest_document,
     delete_patient_document,
@@ -93,6 +95,36 @@ async def _resolve_patient_id(token: str) -> str:
         raise HTTPException(status_code=503, detail=f"Identity service unavailable: {str(e)[:60]}")
 
 # ── AI Companion Chat ────────────────────────────────────────────────────────
+
+@router.post("/chat/stream")
+async def chat_stream(
+    body: ChatRequest,
+    authorization: Optional[str] = Header(None),
+):
+    """
+    Streams AI Care Companion tokens in real-time via Server-Sent Events (SSE).
+    """
+    token = _extract_token(authorization)
+    patient_id = await _resolve_patient_id(token)
+
+    async def event_generator():
+        async for event in process_message_stream(
+            patient_id=patient_id,
+            jwt_token=token,
+            user_message=body.message,
+            conversation_id=body.conversation_id,
+        ):
+            yield f"data: {json.dumps(event)}\n\n"
+
+    return StreamingResponse(
+        event_generator(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no"
+        }
+    )
 
 @router.post("/chat", response_model=ChatResponse)
 async def chat(
