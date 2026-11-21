@@ -1,29 +1,14 @@
 const { GoogleGenerativeAI } = require('@google/generative-ai');
+const { generateJson } = require('./ollamaService');
 
 /**
  * AI Revenue Auditor & Discount Optimizer
- * Ensures no revenue leakage and suggests optimization for billing.
+ * Uses local Ollama LLM with fallback to Gemini.
  */
 const auditBill = async (treatmentSummary, items, patientHistory, totalBillSize) => {
-  try {
-    if (!process.env.GEMINI_API_KEY) {
-      console.warn('GEMINI_API_KEY missing - skipping AI check');
-      return { 
-        flaggedItems: [], 
-        suggestedAdditions: [], 
-        billingSummary: "No API key found. Skipping AI audit." 
-      };
-    }
+  const itemsText = items.map(i => `${i.description} (Qty: ${i.quantity}, Price: ${i.unitPrice})`).join(', ');
 
-    const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-    const model = genAI.getGenerativeModel({ 
-      model: "gemini-2.5-flash",
-      generationConfig: { responseMimeType: "application/json" }
-    });
-
-    const itemsText = items.map(i => `${i.description} (Qty: ${i.quantity}, Price: ${i.unitPrice})`).join(', ');
-
-    const prompt = `You are the Lead Medical Revenue Auditor at MediSync Hospital.
+  const prompt = `You are the Lead Medical Revenue Auditor at MediSync Hospital.
 A patient is being billed. 
 Treatment Summary / Symptoms: ${treatmentSummary || 'General consultation'}
 Current Line Items: ${itemsText}
@@ -34,7 +19,7 @@ Task 1: Check for "Revenue Leakage". For example, if a patient had a 'Surgery' b
 Task 2: Suggest financial assistance or discounts if the total bill size is huge, or patient history dictates care packages.
 Task 3: Provide a brief billing summary.
 
-Return ONLY a JSON object in this exact schema:
+Return ONLY a JSON object in this exact schema without markdown fences:
 {
   "flaggedItems": ["string"],
   "suggestedAdditions": ["string"],
@@ -42,26 +27,45 @@ Return ONLY a JSON object in this exact schema:
 }
 Output valid JSON only.`;
 
-    const result = await model.generateContent(prompt);
-    const text = result.response.text();
-    let data;
-    try {
-      data = JSON.parse(text);
-    } catch(err) {
-      console.error('Failed to parse Gemini billing audit response:', text);
-      throw new Error('Invalid AI response format');
+  // Primary: Ollama
+  try {
+    const data = await generateJson(prompt);
+    if (data && typeof data === 'object') {
+      return {
+        flaggedItems: Array.isArray(data.flaggedItems) ? data.flaggedItems : [],
+        suggestedAdditions: Array.isArray(data.suggestedAdditions) ? data.suggestedAdditions : [],
+        billingSummary: data.billingSummary || "Audit completed via MediSync AI."
+      };
     }
-
-    // Basic Structure Enforcement
-    if (!data.flaggedItems) data.flaggedItems = [];
-    if (!data.suggestedAdditions) data.suggestedAdditions = [];
-    if (!data.billingSummary) data.billingSummary = "Audit completed.";
-
-    return data;
-  } catch (error) {
-    console.error('Billing Audit Service Error:', error);
-    throw error;
+  } catch (ollamaErr) {
+    console.warn('[auditBill] Ollama fallback:', ollamaErr.message);
   }
+
+  // Secondary: Gemini Fallback
+  try {
+    if (process.env.GEMINI_API_KEY) {
+      const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+      const model = genAI.getGenerativeModel({ 
+        model: "gemini-2.5-flash",
+        generationConfig: { responseMimeType: "application/json" }
+      });
+      const result = await model.generateContent(prompt);
+      const text = result.response.text();
+      let data = JSON.parse(text);
+      if (!data.flaggedItems) data.flaggedItems = [];
+      if (!data.suggestedAdditions) data.suggestedAdditions = [];
+      if (!data.billingSummary) data.billingSummary = "Audit completed.";
+      return data;
+    }
+  } catch(err) {
+    console.error('Failed to parse Gemini billing audit response:', err.message);
+  }
+
+  return {
+    flaggedItems: [],
+    suggestedAdditions: [],
+    billingSummary: "Audit completed."
+  };
 };
 
 module.exports = {

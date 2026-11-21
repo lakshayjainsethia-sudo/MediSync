@@ -310,7 +310,7 @@ export default function PatientDashboard() {
             <div>
               <h2 className="text-xl font-bold text-white flex items-center gap-2">
                 MediSync AI Care Companion
-                <span className="text-xs bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 px-2 py-0.5 rounded-full font-medium">Local & Private</span>
+                <span className="text-xs bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 px-2 py-0.5 rounded-full font-medium">Instant Assistant</span>
               </h2>
               <p className="text-sm text-slate-300 mt-1">
                 Have questions about your prescriptions, past consultations, or health records? Ask your personal AI assistant anytime.

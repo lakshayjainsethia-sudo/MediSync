@@ -127,17 +127,11 @@ export const AiCompanion: React.FC = () => {
           </div>
           <div>
             <h2 className="text-sm font-semibold text-slate-800">AI Care Companion</h2>
-            <p className="text-xs text-slate-500">Qwen2.5 + RAG Embeddings · Local & Private</p>
+            <p className="text-xs text-slate-500">Integrated Patient Health Assistant</p>
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <button
-            onClick={() => setShowDebug((v) => !v)}
-            className="text-xs text-slate-400 hover:text-slate-600 px-2 py-1 rounded"
-            title="Toggle debug info"
-          >
-            {showDebug ? "Hide debug" : "Debug"}
-          </button>
+
           <button
             onClick={handleNewConversation}
             className="text-xs bg-slate-100 hover:bg-slate-200 text-slate-600 px-3 py-1.5 rounded-lg transition-colors font-medium"
@@ -183,14 +177,7 @@ export const AiCompanion: React.FC = () => {
                 </div>
               )}
 
-              {showDebug && msg.tool_used && msg.role === "assistant" && (
-                <div className="mt-2 pt-2 border-t border-slate-100">
-                  <span className="text-xs text-slate-400 font-mono">
-                    tool: {msg.tool_used}
-                    {msg.error && ` | warn: ${msg.error.slice(0, 40)}`}
-                  </span>
-                </div>
-              )}
+
               {msg.timestamp && (
                 <p
                   className={`text-[10px] mt-1.5 ${

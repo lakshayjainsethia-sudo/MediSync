@@ -1,4 +1,5 @@
 const { GoogleGenerativeAI } = require("@google/generative-ai");
+const { generateJson } = require("./ollamaService");
 
 // Local Cache for Symptom Suggestions (10 Minute TTL)
 const symptomCache = new Map();
@@ -16,49 +17,44 @@ exports.suggestSymptoms = async (partialInput) => {
     symptomCache.delete(query);
   }
 
+  // Primary: Use Local Ollama
   try {
-    if (!process.env.GEMINI_API_KEY) {
-      return ["Fever", "Cough", "Headache", "Fatigue", "Nausea", "Pain"]; // Fallback
+    const prompt = `You are a medical assistant. The user typed: '${query}'. Return exactly 6 common medical symptoms that start with or relate to this input. Return ONLY a JSON object with format: { "symptoms": ["symptom1", "symptom2", "symptom3", "symptom4", "symptom5", "symptom6"] }. No markdown fences, no explanation.`;
+    const res = await generateJson(prompt);
+    const data = Array.isArray(res) ? res : (res.symptoms || res.results || []);
+    if (data.length > 0) {
+      symptomCache.set(query, { data, timestamp: Date.now() });
+      return data;
     }
-
-    const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-    const model = genAI.getGenerativeModel({ 
-      model: "gemini-2.5-flash",
-      generationConfig: { responseMimeType: "application/json" }
-    });
-
-    const prompt = `You are a medical assistant. The user typed: '${query}'. Return exactly 6 common medical symptoms that start with or relate to this input. Return ONLY a JSON array of strings. No explanation.`;
-    
-    const result = await model.generateContent(prompt);
-    let text = result.response.text();
-    text = text.replace(/```json|```/gi, '').trim();
-    const data = JSON.parse(text);
-    
-    symptomCache.set(query, { data, timestamp: Date.now() });
-    return data;
-  } catch (error) {
-    console.error('AI Symptom Suggest Error:', error);
-    return [];
+  } catch (ollamaErr) {
+    console.warn('[suggestSymptoms] Ollama fallback to Gemini/default:', ollamaErr.message);
   }
+
+  // Secondary: Gemini Fallback
+  try {
+    if (process.env.GEMINI_API_KEY) {
+      const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+      const model = genAI.getGenerativeModel({ 
+        model: "gemini-2.5-flash",
+        generationConfig: { responseMimeType: "application/json" }
+      });
+      const prompt = `You are a medical assistant. The user typed: '${query}'. Return exactly 6 common medical symptoms that start with or relate to this input. Return ONLY a JSON array of strings. No explanation.`;
+      const result = await model.generateContent(prompt);
+      let text = result.response.text();
+      text = text.replace(/```json|```/gi, '').trim();
+      const data = JSON.parse(text);
+      symptomCache.set(query, { data, timestamp: Date.now() });
+      return data;
+    }
+  } catch (error) {
+    console.error('AI Symptom Suggest Error:', error.message);
+  }
+
+  return ["Fever", "Cough", "Headache", "Fatigue", "Nausea", "Pain"];
 };
 
 exports.analyzeSymptoms = async (symptoms) => {
-  try {
-    if (!process.env.GEMINI_API_KEY) {
-      console.warn('GEMINI_API_KEY is not configured. Returning default triage.');
-      return { 
-        severity: 5, urgency_score: 5,
-        triage_tag: "ORANGE", triage_reason: "Manual review required"
-      };
-    }
-
-    const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-    const model = genAI.getGenerativeModel({ 
-      model: "gemini-2.5-flash",
-      generationConfig: { responseMimeType: "application/json" }
-    });
-
-    const prompt = `You are a medical triage assistant. Analyze the following symptoms and return ONLY a JSON object with this exact shape, no explanation, no markdown fences:
+  const prompt = `You are a medical triage assistant. Analyze the following symptoms and return ONLY a JSON object with this exact shape, no explanation, no markdown fences:
 {
   "severity": <integer 1-10>,
   "urgency_score": <integer 1-10>,
@@ -73,33 +69,63 @@ Triage tag rules you must follow:
 
 Symptoms: ${symptoms}`;
 
-    const result = await model.generateContent(prompt);
-    let responseText = result.response.text();
-    responseText = responseText.replace(/```json|```/gi, '').trim();
-    const data = JSON.parse(responseText);
-
+  // Primary: Use Local Ollama (Same as AI Care Companion)
+  try {
+    const data = await generateJson(prompt);
     if (
-      typeof data.severity !== 'number' || data.severity < 1 || data.severity > 10 ||
-      typeof data.urgency_score !== 'number' || data.urgency_score < 1 || data.urgency_score > 10 ||
-      !['RED', 'ORANGE', 'GREEN'].includes(data.triage_tag) ||
-      typeof data.triage_reason !== 'string'
+      data &&
+      typeof data.severity === 'number' && data.severity >= 1 && data.severity <= 10 &&
+      typeof data.urgency_score === 'number' && data.urgency_score >= 1 && data.urgency_score <= 10 &&
+      ['RED', 'ORANGE', 'GREEN'].includes(data.triage_tag) &&
+      typeof data.triage_reason === 'string'
     ) {
-      throw new Error('AI response validation failed');
+      return {
+        severity: data.severity,
+        urgency_score: data.urgency_score,
+        triage_tag: data.triage_tag,
+        triage_reason: data.triage_reason
+      };
     }
-
-    return {
-      severity: data.severity,
-      urgency_score: data.urgency_score,
-      triage_tag: data.triage_tag,
-      triage_reason: data.triage_reason
-    };
-  } catch (error) {
-    console.error('AI Triage Error:', error);
-    return { 
-      severity: 5, urgency_score: 5,
-      triage_tag: "ORANGE", triage_reason: "Manual review required"
-    };
+  } catch (ollamaErr) {
+    console.warn('[analyzeSymptoms] Ollama error, falling back to Gemini:', ollamaErr.message);
   }
+
+  // Secondary: Gemini Fallback
+  try {
+    if (process.env.GEMINI_API_KEY) {
+      const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+      const model = genAI.getGenerativeModel({ 
+        model: "gemini-2.5-flash",
+        generationConfig: { responseMimeType: "application/json" }
+      });
+      const result = await model.generateContent(prompt);
+      let responseText = result.response.text();
+      responseText = responseText.replace(/```json|```/gi, '').trim();
+      const data = JSON.parse(responseText);
+
+      if (
+        typeof data.severity === 'number' && data.severity >= 1 && data.severity <= 10 &&
+        typeof data.urgency_score === 'number' && data.urgency_score >= 1 && data.urgency_score <= 10 &&
+        ['RED', 'ORANGE', 'GREEN'].includes(data.triage_tag) &&
+        typeof data.triage_reason === 'string'
+      ) {
+        return {
+          severity: data.severity,
+          urgency_score: data.urgency_score,
+          triage_tag: data.triage_tag,
+          triage_reason: data.triage_reason
+        };
+      }
+    }
+  } catch (error) {
+    console.error('AI Triage Gemini Error:', error.message);
+  }
+
+  // Safe Deterministic Fallback
+  return { 
+    severity: 5, urgency_score: 5,
+    triage_tag: "ORANGE", triage_reason: "Manual review required"
+  };
 };
 
 exports.analyzePrescription = async (prescription, patientAge, existingConditions) => {
@@ -133,33 +159,47 @@ exports.analyzePrescription = async (prescription, patientAge, existingCondition
       "disclaimer": "AI-generated. Verify with clinical judgment."
     }
   `;
+
+  // Primary: Ollama
   try {
-    if (!process.env.GEMINI_API_KEY) throw new Error('No API Key');
-    const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash", generationConfig: { responseMimeType: "application/json" }});
-    
-    const result = await model.generateContent(prompt);
-    const text = result.response.text();
-    const clean = text.replace(/```json|```/g, '').trim();
-    const parsed = JSON.parse(clean);
-
-    if (!Array.isArray(parsed.interactions) || !Array.isArray(parsed.dosageWarnings)) {
-      throw new Error('Invalid shape');
+    const parsed = await generateJson(prompt);
+    if (parsed && Array.isArray(parsed.interactions) && Array.isArray(parsed.dosageWarnings)) {
+      parsed.interactions = parsed.interactions.filter(i => i.drug1 && i.drug2 && i.severity && i.reason);
+      parsed.dosageWarnings = parsed.dosageWarnings.filter(d => d.drug && d.issue && d.severity);
+      parsed.disclaimer = parsed.disclaimer || "AI-generated. Verify with clinical judgment.";
+      return parsed;
     }
+  } catch (ollamaErr) {
+    console.warn('[analyzePrescription] Ollama fallback:', ollamaErr.message);
+  }
 
-    parsed.interactions = parsed.interactions.filter(i => i.drug1 && i.drug2 && i.severity && i.reason);
-    parsed.dosageWarnings = parsed.dosageWarnings.filter(d => d.drug && d.issue && d.severity);
-    return parsed;
+  // Secondary: Gemini Fallback
+  try {
+    if (process.env.GEMINI_API_KEY) {
+      const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+      const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash", generationConfig: { responseMimeType: "application/json" }});
+      const result = await model.generateContent(prompt);
+      const text = result.response.text();
+      const clean = text.replace(/```json|```/g, '').trim();
+      const parsed = JSON.parse(clean);
+
+      if (Array.isArray(parsed.interactions) && Array.isArray(parsed.dosageWarnings)) {
+        parsed.interactions = parsed.interactions.filter(i => i.drug1 && i.drug2 && i.severity && i.reason);
+        parsed.dosageWarnings = parsed.dosageWarnings.filter(d => d.drug && d.issue && d.severity);
+        return parsed;
+      }
+    }
   } catch (err) {
     console.error('[AI analyzePrescription failed]', err.message);
-    return {
-      interactions: [],
-      dosageWarnings: [],
-      overallSafe: true,
-      disclaimer: 'AI analysis unavailable. Review manually.',
-      fallback: true
-    };
   }
+
+  return {
+    interactions: [],
+    dosageWarnings: [],
+    overallSafe: true,
+    disclaimer: 'AI analysis unavailable. Review manually.',
+    fallback: true
+  };
 };
 
 exports.predictMaintenance = async (equipment) => {
@@ -188,30 +228,41 @@ exports.predictMaintenance = async (equipment) => {
       "reasoning": "<max 30 words plain English>"
     }
   `;
-  try {
-    if (!process.env.GEMINI_API_KEY) throw new Error('No API Key');
-    const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash", generationConfig: { responseMimeType: "application/json" }});
 
-    const result = await model.generateContent(prompt);
-    const text = result.response.text();
-    const clean = text.replace(/```json|```/g, '').trim();
-    const parsed = JSON.parse(clean);
-    
-    if (!parsed.predictedNextService || !parsed.urgency) {
-      throw new Error('Invalid shape');
+  // Primary: Ollama
+  try {
+    const parsed = await generateJson(prompt);
+    if (parsed && parsed.predictedNextService && parsed.urgency) {
+      return parsed;
     }
-    return parsed;
+  } catch (ollamaErr) {
+    console.warn('[predictMaintenance] Ollama fallback:', ollamaErr.message);
+  }
+
+  // Secondary: Gemini
+  try {
+    if (process.env.GEMINI_API_KEY) {
+      const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+      const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash", generationConfig: { responseMimeType: "application/json" }});
+      const result = await model.generateContent(prompt);
+      const text = result.response.text();
+      const clean = text.replace(/```json|```/g, '').trim();
+      const parsed = JSON.parse(clean);
+      if (parsed.predictedNextService && parsed.urgency) {
+        return parsed;
+      }
+    }
   } catch (err) {
     console.error('[AI predictMaintenance failed]', err.message);
-    return {
-      predictedNextService: null,
-      confidenceLevel: 'LOW',
-      predictedIssues: [],
-      recommendedActions: ['Manual review recommended'],
-      urgency: 'ROUTINE',
-      reasoning: 'Insufficient data for AI prediction.',
-      fallback: true
-    };
   }
+
+  return {
+    predictedNextService: null,
+    confidenceLevel: 'LOW',
+    predictedIssues: [],
+    recommendedActions: ['Manual review recommended'],
+    urgency: 'ROUTINE',
+    reasoning: 'Insufficient data for AI prediction.',
+    fallback: true
+  };
 };
