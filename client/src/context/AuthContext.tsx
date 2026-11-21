@@ -5,7 +5,7 @@ import api from '../utils/api'
 interface AuthContextType {
   user: User | null
   loading: boolean
-  login: (email: string, password: string) => Promise<void>
+  login: (email: string, password: string) => Promise<User>
   register: (name: string, email: string, password: string, role: RegisterableRole) => Promise<void>
   logout: () => Promise<void>
   updateUser: (userData: Partial<User>) => void
@@ -49,12 +49,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }
 
-  const login = async (email: string, password: string) => {
+  const login = async (email: string, password: string): Promise<User> => {
     const response = await api.post('/auth/login', { email, password })
     const { token, user: userData } = response.data
     localStorage.setItem('token', token)
     localStorage.setItem('user', JSON.stringify(userData))
     setUser(userData)
+    return userData
   }
 
   const register = async (name: string, email: string, password: string, role: RegisterableRole) => {

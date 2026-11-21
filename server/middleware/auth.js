@@ -103,7 +103,7 @@ const sendTokenResponse = async (user, statusCode, req, res) => {
   };
 
   const UAParser = require('ua-parser-js');
-  const geoip = require('geoip-lite');
+  const geoip = require('../utils/geoLookup');
   
   const parser = new UAParser(req.headers['user-agent']);
   const result = parser.getResult();

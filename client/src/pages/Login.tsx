@@ -16,10 +16,10 @@ export default function Login() {
     setLoading(true)
 
     try {
-      await login(email, password)
+      const loggedInUser = await login(email, password)
       toast.success('Login successful!')
-      const user = JSON.parse(localStorage.getItem('user') || '{}')
-      navigate(`/${user.role}/dashboard`)
+      const targetRole = loggedInUser?.role || 'patient'
+      navigate(`/${targetRole}/dashboard`)
     } catch (error: any) {
       toast.error(error.response?.data?.message || 'Login failed')
     } finally {

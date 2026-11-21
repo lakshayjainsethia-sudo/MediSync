@@ -1,4 +1,4 @@
-const geoip = require('geoip-lite');
+const geoip = require('../utils/geoLookup');
 const Session = require('../models/Session');
 const { alertSecurityEvent } = require('../utils/alerter');
 
