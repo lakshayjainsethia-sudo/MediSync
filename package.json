@@ -1,0 +1,11 @@
+{
+  "name": "medisync",
+  "version": "1.0.0",
+  "private": true,
+  "description": "MediSync Full-Stack Healthcare Platform",
+  "scripts": {
+    "dev": "powershell -NoProfile -ExecutionPolicy Bypass -File ./scripts/start-dev.ps1",
+    "dev:backend": "npm --prefix server run dev",
+    "dev:ai": "powershell -NoProfile -ExecutionPolicy Bypass -File ./start-ai-dev.ps1"
+  }
+}

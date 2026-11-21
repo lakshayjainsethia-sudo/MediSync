@@ -20,6 +20,20 @@
   
   app.use(cors(corsOptions));
   
+  // 1B. Health Check Endpoint (Distinguishes server process from MongoDB readiness)
+  app.get('/health', (req, res) => {
+    // readyState: 0 = disconnected, 1 = connected, 2 = connecting, 3 = disconnecting
+    const isDbConnected = mongoose.connection.readyState === 1;
+    const status = isDbConnected ? 200 : 503;
+    return res.status(status).json({
+      status: isDbConnected ? 'ok' : 'degraded',
+      service: 'medisync-backend',
+      database: isDbConnected ? 'connected' : 'disconnected',
+      dbReadyState: mongoose.connection.readyState,
+      timestamp: new Date().toISOString()
+    });
+  });
+
   // Prometheus Metrics (/metrics endpoint)
   const promBundle = require('express-prom-bundle');
   const metricsMiddleware = promBundle({
