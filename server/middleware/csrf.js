@@ -29,6 +29,10 @@ const csrfProtection = (req, res, next) => {
 
   // 2.5 Skip CSRF validation for login and register as they establish the session
   const EXCLUDED_ROUTES = ['/api/v1/auth/login', '/api/v1/auth/register', '/api/v1/admin/setup'];
+  // Intelligence endpoints are authenticated via JWT Bearer tokens and proxied directly
+  if (req.originalUrl?.startsWith('/api/v1/intelligence') || req.path?.startsWith('/intelligence')) {
+    return next();
+  }
   if (EXCLUDED_ROUTES.includes(req.originalUrl) || EXCLUDED_ROUTES.includes(req.path)) {
     return next();
   }

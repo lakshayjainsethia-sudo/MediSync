@@ -91,6 +91,15 @@
     whitelist: ['status', 'role', 'category']
   }));
 
+  // Proxy to FastAPI Intelligence Engine (placed before body-parser so streaming/multipart/json are proxied intact)
+  app.use('/api/v1/intelligence', createProxyMiddleware({
+    target: process.env.FASTAPI_URL || 'http://localhost:8000',
+    changeOrigin: true,
+    pathRewrite: {
+      '^/api/v1/intelligence': '',
+    },
+  }));
+
   // 2G. Request Size Limit
   app.use(express.json({ limit: '10kb' }));
   app.use(express.urlencoded({ extended: true, limit: '10kb' }));
@@ -139,14 +148,6 @@
   app.use('/api/v1/auth/login', strictLimiter);
   app.use('/api/v1/auth/register', strictLimiter);
 
-  // Proxy to FastAPI Intelligence Engine
-  app.use('/api/v1/intelligence', createProxyMiddleware({
-    target: process.env.FASTAPI_URL || 'http://localhost:8000',
-    changeOrigin: true,
-    pathRewrite: {
-      '^/api/v1/intelligence': '', // remove base path when proxying
-    },
-  }));
 
   // Routes
   const aiRoutes = require('./routes/ai');
