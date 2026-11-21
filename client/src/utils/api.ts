@@ -13,7 +13,7 @@ const getCookie = (name: string) => {
 const api = axios.create({
   baseURL: import.meta.env.VITE_API_BASE_URL || '/api/v1',
   withCredentials: true,
-  timeout: 15000,
+  timeout: 90000,
   headers: {
     'Content-Type': 'application/json',
   },
