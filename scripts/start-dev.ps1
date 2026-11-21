@@ -26,12 +26,17 @@ if (-not (Test-Path $LocalLogDir)) {
 }
 $BackendLogFile = Join-Path $LocalLogDir "backend-dev.log"
 $FastApiLogFile = Join-Path $LocalLogDir "ai-service-dev.log"
+$OrchestratorLogFile = Join-Path $LocalLogDir "orchestrator-dev.log"
+
+"[$((Get-Date).ToString('o'))] MediSync Orchestrator initialized" | Out-File -FilePath $OrchestratorLogFile -Encoding utf8 -Append
+"[$((Get-Date).ToString('o'))] Backend logging initialized" | Out-File -FilePath $BackendLogFile -Encoding utf8 -Append
+"[$((Get-Date).ToString('o'))] AI Service logging initialized" | Out-File -FilePath $FastApiLogFile -Encoding utf8 -Append
+
 Write-Host "[Logs] %LOCALAPPDATA%\MediSync\logs" -ForegroundColor DarkGray
 
-# 3. Environment & Dependency Checks
+# 3. Pre-flight Environment & Dependency Checks
 Write-Host "`n--> Pre-flight System Verification" -ForegroundColor Yellow
 
-# Check Node.js and npm
 $nodeCmd = Get-Command "node" -ErrorAction SilentlyContinue
 $npmCmd = Get-Command "npm" -ErrorAction SilentlyContinue
 if (-not $nodeCmd -or -not $npmCmd) {
@@ -40,7 +45,6 @@ if (-not $nodeCmd -or -not $npmCmd) {
 }
 Write-Host "  [OK] Node.js: $(node --version)" -ForegroundColor Green
 
-# Check Python (configurable with C:\Python313\python.exe fallback)
 if (-not $PythonPath) {
     if (Test-Path "C:\Python313\python.exe") {
         $PythonPath = "C:\Python313\python.exe"
@@ -59,14 +63,12 @@ if (-not $PythonPath -or -not (Test-Path $PythonPath)) {
 $pyVer = & $PythonPath --version
 Write-Host "  [OK] Python: $pyVer ($PythonPath)" -ForegroundColor Green
 
-# Verify Backend packages exist
 if (-not (Test-Path "$ProjectRoot\server\node_modules")) {
     Write-Host "[ERROR] server/node_modules not found!" -ForegroundColor Red
     Write-Host "        Please install using: cd server && npm install" -ForegroundColor Yellow
     exit 1
 }
 
-# Verify AI Service dependencies
 $fastApiCheck = & $PythonPath -c "import fastapi, uvicorn, motor, httpx, pydantic, pydantic_settings; print('OK')" 2>$null
 if ($fastApiCheck -ne "OK") {
     Write-Host "[ERROR] Required Python packages missing!" -ForegroundColor Red
@@ -120,16 +122,14 @@ try {
     } else {
         $tcp.Close()
     }
-} catch {
-    # Handled below
-}
+} catch {}
 
 if (-not $mongoReady) {
     Write-Host "  [WARN] MongoDB not responding on 127.0.0.1:27017." -ForegroundColor Yellow
     Write-Host "         Start MongoDB: mongod --dbpath <data-path> or start Windows Service" -ForegroundColor Yellow
 }
 
-# Ollama Check (port 11434) - Reusing logic from start-ai-dev.ps1
+# Ollama Check (port 11434)
 $ollamaReady = $false
 try {
     $resp = Invoke-WebRequest -Uri "http://127.0.0.1:11434/api/tags" -UseBasicParsing -TimeoutSec 2 -ErrorAction Stop
@@ -168,12 +168,11 @@ if ($ollamaReady) {
     }
 }
 
-# 6. Launch Child Processes
+# 6. Launch Child Processes with Non-Blocking Direct Output
 Write-Host "`n--> Initializing Independent Microservices" -ForegroundColor Yellow
 
 $TrackedProcesses = @()
 
-# Cleanup Function: Kills ONLY the tracked processes started in this session
 function Stop-TrackedProcesses {
     Write-Host "`n`n[Shutdown] Stopping MediSync services..." -ForegroundColor Yellow
     foreach ($p in $TrackedProcesses) {
@@ -191,34 +190,20 @@ try {
     # 6A. Start FastAPI AI Service
     Write-Host "  Starting FastAPI AI Service on port 8000..." -ForegroundColor Cyan
     $aiServicePath = Join-Path $ProjectRoot "ai-service"
-    
-    $fastApiPsi = New-Object System.Diagnostics.ProcessStartInfo
-    $fastApiPsi.FileName = $PythonPath
-    $fastApiPsi.Arguments = "-m uvicorn app.main:app --host 0.0.0.0 --port 8000"
-    $fastApiPsi.WorkingDirectory = $aiServicePath
-    $fastApiPsi.UseShellExecute = $false
-    $fastApiPsi.RedirectStandardOutput = $true
-    $fastApiPsi.RedirectStandardError = $true
-    $fastApiPsi.CreateNoWindow = $true
-
-    $fastApiProc = [System.Diagnostics.Process]::Start($fastApiPsi)
+    $fastApiProc = Start-Process -FilePath $PythonPath `
+        -ArgumentList "-m uvicorn app.main:app --host 0.0.0.0 --port 8000" `
+        -WorkingDirectory $aiServicePath `
+        -PassThru -NoNewWindow
     $TrackedProcesses += $fastApiProc
     Write-Host "  FastAPI Process PID: $($fastApiProc.Id)" -ForegroundColor DarkGray
 
     # 6B. Start Node.js Express Gateway
     Write-Host "  Starting Node.js Backend Gateway on port 5000..." -ForegroundColor Cyan
     $serverPath = Join-Path $ProjectRoot "server"
-
-    $nodePsi = New-Object System.Diagnostics.ProcessStartInfo
-    $nodePsi.FileName = "node"
-    $nodePsi.Arguments = "server.js"
-    $nodePsi.WorkingDirectory = $serverPath
-    $nodePsi.UseShellExecute = $false
-    $nodePsi.RedirectStandardOutput = $true
-    $nodePsi.RedirectStandardError = $true
-    $nodePsi.CreateNoWindow = $true
-
-    $nodeProc = [System.Diagnostics.Process]::Start($nodePsi)
+    $nodeProc = Start-Process -FilePath "node" `
+        -ArgumentList "server.js" `
+        -WorkingDirectory $serverPath `
+        -PassThru -NoNewWindow
     $TrackedProcesses += $nodeProc
     Write-Host "  Node.js Process PID: $($nodeProc.Id)" -ForegroundColor DarkGray
 
@@ -229,7 +214,7 @@ try {
         param(
             [string]$Name,
             [string]$Url,
-            [int]$TimeoutSec = 20,
+            [int]$TimeoutSec = 25,
             [System.Diagnostics.Process]$Proc
         )
         $start = Get-Date
@@ -243,7 +228,6 @@ try {
                 Write-Host "  [READY] $Name is healthy ($Url)" -ForegroundColor Green
                 return $true
             } catch {
-                # Check if it responded with HTTP status (e.g. 503 degraded due to DB)
                 if ($_.Exception.Response) {
                     $code = [int]$_.Exception.Response.StatusCode
                     if ($code -eq 503) {
@@ -258,8 +242,8 @@ try {
         return $false
     }
 
-    $fastApiHealthy = Wait-ForHealth -Name "FastAPI AI Service" -Url "http://127.0.0.1:8000/health" -TimeoutSec 15 -Proc $fastApiProc
-    $nodeHealthy    = Wait-ForHealth -Name "Node.js Backend"    -Url "http://127.0.0.1:5000/health" -TimeoutSec 15 -Proc $nodeProc
+    $fastApiHealthy = Wait-ForHealth -Name "FastAPI AI Service" -Url "http://127.0.0.1:8000/health" -TimeoutSec 20 -Proc $fastApiProc
+    $nodeHealthy    = Wait-ForHealth -Name "Node.js Backend"    -Url "http://127.0.0.1:5000/health" -TimeoutSec 20 -Proc $nodeProc
 
     if (-not $fastApiHealthy -or -not $nodeHealthy) {
         Write-Host "`n[FATAL] One or more services failed to report ready. Shutting down..." -ForegroundColor Red
@@ -278,56 +262,17 @@ try {
     Write-Host "==========================================================" -ForegroundColor Green
     Write-Host ""
 
-    # 8. Service Event & Log Monitor Loop
-    # Handles stdout/stderr asynchronously and checks process liveness
+    # 8. Monitor Process Liveness
     while ($true) {
         if ($fastApiProc.HasExited) {
-            $code = $fastApiProc.ExitCode
-            $err = $fastApiProc.StandardError.ReadToEnd()
-            Write-Host "`n[EXIT] FastAPI process exited with code $code!" -ForegroundColor Red
-            if ($err) { Write-Host $err -ForegroundColor Red }
+            Write-Host "`n[EXIT] FastAPI process exited with code $($fastApiProc.ExitCode)!" -ForegroundColor Red
             break
         }
         if ($nodeProc.HasExited) {
-            $code = $nodeProc.ExitCode
-            $err = $nodeProc.StandardError.ReadToEnd()
-            Write-Host "`n[EXIT] Node.js process exited with code $code!" -ForegroundColor Red
-            if ($err) { Write-Host $err -ForegroundColor Red }
+            Write-Host "`n[EXIT] Node.js process exited with code $($nodeProc.ExitCode)!" -ForegroundColor Red
             break
         }
-
-        # Drain and display pending stdout lines with colored tags
-        while (-not $fastApiProc.StandardOutput.EndOfStream) {
-            $line = $fastApiProc.StandardOutput.ReadLine()
-            if ($line) {
-                Write-Host "[FastAPI] $line" -ForegroundColor DarkCyan
-                Add-Content -Path $FastApiLogFile -Value "[$(Get-Date -Format 'o')] $line"
-            }
-        }
-        while (-not $fastApiProc.StandardError.EndOfStream) {
-            $line = $fastApiProc.StandardError.ReadLine()
-            if ($line) {
-                Write-Host "[FastAPI] $line" -ForegroundColor DarkCyan
-                Add-Content -Path $FastApiLogFile -Value "[$(Get-Date -Format 'o')] $line"
-            }
-        }
-
-        while (-not $nodeProc.StandardOutput.EndOfStream) {
-            $line = $nodeProc.StandardOutput.ReadLine()
-            if ($line) {
-                Write-Host "[Node]    $line" -ForegroundColor White
-                Add-Content -Path $BackendLogFile -Value "[$(Get-Date -Format 'o')] $line"
-            }
-        }
-        while (-not $nodeProc.StandardError.EndOfStream) {
-            $line = $nodeProc.StandardError.ReadLine()
-            if ($line) {
-                Write-Host "[Node]    $line" -ForegroundColor Gray
-                Add-Content -Path $BackendLogFile -Value "[$(Get-Date -Format 'o')] $line"
-            }
-        }
-
-        Start-Sleep -Milliseconds 500
+        Start-Sleep -Seconds 1
     }
 }
 finally {
