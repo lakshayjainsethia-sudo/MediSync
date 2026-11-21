@@ -2,9 +2,6 @@
 Deterministic Intent Router (Enhanced with Patient Document RAG)
 
 Maps patient questions to structured tool names or patient document RAG retrieval.
-This is the PRIMARY dispatch mechanism — it does NOT rely on the LLM
-for routing decisions, which makes it 100% reliable regardless of
-model quality or context window constraints.
 """
 
 from typing import Optional
@@ -28,44 +25,46 @@ ROUTING_TABLE = [
         "get_patient_summary",
         [
             "health summary", "medical summary", "my summary", "summary of my health", "summary of health",
-            "overview of my health", "everything about me",
-            "full report", "all my info", "complete health",
+            "overview of my health", "everything about me", "tell me everything", "tell me about myself",
+            "full report", "all my info", "complete health", "all my records", "all records", "my data",
+            "what do you know about me", "who am i", "patient record", "patient records"
         ],
     ),
     (
         "get_prescriptions",
         [
-            "prescription", "medicine", "medication", "drug", "tablet",
-            "capsule", "dose", "dosage", "pill", "syrup", "prescribed",
-            "what am i taking", "what should i take", "when should i take",
-            "dolo", "metrocil", "how to take", "take my",
+            "prescription", "prescriptions", "medicine", "medicines", "medication", "medications",
+            "drug", "drugs", "tablet", "tablets", "capsule", "capsules", "dose", "dosage",
+            "pill", "pills", "syrup", "prescribed", "what am i taking", "what should i take",
+            "when should i take", "dolo", "metrocil", "how to take", "take my", "refill", "pharmacy"
         ],
     ),
     (
         "get_medical_history",
         [
-            "medical history", "health history", "past diagnosis",
-            "diagnosed with", "medical condition", "medical record",
-            "health record", "past record",
-            "do i have", "am i diagnosed", "have i been diagnosed",
-            "what condition", "my condition", "my disease", "my illness",
-            "my chronic", "my diagnosis",
+            "medical history", "health history", "past diagnosis", "diagnosed with",
+            "medical condition", "medical conditions", "medical record", "medical records",
+            "health record", "health records", "past record", "past records", "diagnoses",
+            "do i have", "am i diagnosed", "have i been diagnosed", "what condition",
+            "my condition", "my disease", "my illness", "my chronic", "my diagnosis",
+            "clinical record", "clinical note"
         ],
     ),
     (
         "get_consultation_history",
         [
-            "consultation", "previous visit", "last visit", "past visit",
-            "doctor visit", "appointment history", "past appointment",
-            "met doctor", "last appointment",
+            "consultation", "consultations", "previous visit", "previous visits", "last visit",
+            "past visit", "past visits", "doctor visit", "doctor visits", "appointment history",
+            "past appointment", "past appointments", "met doctor", "last appointment",
+            "dr ", "doctor consultation", "my appointments"
         ],
     ),
     (
         "get_patient_profile",
         [
-            "my profile", "my details", "blood group", "blood type",
-            "allerg", "emergency contact", "date of birth", "my age",
-            "my weight", "my height", "insurance", "gender",
+            "my profile", "my details", "blood group", "blood type", "allerg", "allergy", "allergies",
+            "emergency contact", "date of birth", "my age", "how old am i", "my weight", "my height",
+            "insurance", "gender", "phone number", "contact details"
         ],
     ),
 ]
@@ -75,7 +74,7 @@ GENERAL_QA_TOOL = "general_qa"
 def route_intent(query: str) -> str:
     """
     Returns the tool name that best matches the query.
-    Falls back to 'general_qa' if no pattern matches.
+    Falls back to 'general_qa' if no specific category matched.
     """
     q = query.lower()
     for tool_name, patterns in ROUTING_TABLE:

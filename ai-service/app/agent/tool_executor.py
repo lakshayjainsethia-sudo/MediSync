@@ -4,18 +4,6 @@ Tool Executor
 Fetches real patient data from the Node.js API Gateway by forwarding
 the patient's JWT. This ensures all data access goes through the
 existing auth middleware — the AI service never bypasses security.
-
-Supported tools and their Node.js API endpoints:
-  get_patient_profile       -> GET /api/v1/patients/me
-  get_prescriptions         -> GET /api/v1/prescriptions/me
-  get_medical_history       -> GET /api/v1/medical-records/me
-  get_consultation_history  -> GET /api/v1/patients/me/appointments/past
-  get_patient_summary       -> calls profile + prescriptions + medical_history (no appointments)
-  general_qa                -> no data fetch (LLM answers from system prompt only)
-
-Out of scope (intentionally omitted):
-  Upcoming appointment retrieval — appointment management is outside the
-  AI Care Companion scope. Patients should use the main dashboard for that.
 """
 
 import httpx
@@ -42,10 +30,6 @@ def _safe_extract(response: dict) -> dict:
 async def execute_tool(tool_name: str, token: str) -> tuple[str, dict]:
     """
     Execute the given tool and return (formatted_context_string, raw_data).
-
-    Returns:
-        context: Human-readable string injected into LLM prompt
-        raw:     Raw API response dict (for logging/debugging)
     """
     try:
         if tool_name == "get_patient_profile":
@@ -69,19 +53,21 @@ async def execute_tool(tool_name: str, token: str) -> tuple[str, dict]:
             context = _format_appointments(data, label="Past Consultations")
 
         elif tool_name == "get_patient_summary":
-            # Fetch core medical context — no upcoming appointments (out of scope)
+            # Fetch complete 360-degree patient chart
             profile_raw = await _get("/patients/me", token)
             rx_raw = await _get("/prescriptions/me", token)
             records_raw = await _get("/medical-records/me", token)
+            appt_raw = await _get("/patients/me/appointments/past", token)
 
             profile = _format_profile(_safe_extract(profile_raw))
             rx = _format_prescriptions(_safe_extract(rx_raw))
             records = _format_medical_records(_safe_extract(records_raw))
+            appts = _format_appointments(_safe_extract(appt_raw), label="Past Consultations")
 
-            context = "\n\n".join(filter(None, [profile, rx, records]))
+            context = "\n\n".join(filter(None, [profile, rx, records, appts]))
             raw = {"summary": True}
 
-        else:  # general_qa and any unrecognised tool
+        else:
             return "", {}
 
         return context, raw if isinstance(raw, dict) else {}
@@ -98,21 +84,18 @@ async def execute_tool(tool_name: str, token: str) -> tuple[str, dict]:
         return f"ERROR:FETCH_FAILED:{str(e)[:60]}", {}
 
 
-
 # ── Formatters ─────────────────────────────────────────────────────────────
 
 def _format_profile(data) -> str:
     if not data:
         return "No profile data available."
     lines = ["Patient Profile:"]
-    # User-level fields
     if name := data.get("name"):
         lines.append(f"  Name: {name}")
     if email := data.get("email"):
         lines.append(f"  Email: {email}")
     if phone := data.get("phone"):
         lines.append(f"  Phone: {phone}")
-    # Patient-model fields (may come from patientProfile virtual or merged object)
     profile = data.get("patientProfile", data)
     if dob := profile.get("dateOfBirth"):
         lines.append(f"  Date of Birth: {dob[:10] if isinstance(dob,str) else dob}")
@@ -144,7 +127,7 @@ def _format_prescriptions(data) -> str:
         return "No prescriptions found."
 
     lines = [f"Prescriptions ({len(prescriptions)} record(s)):"]
-    for i, rx in enumerate(prescriptions[:5], 1):  # limit to 5 most recent
+    for i, rx in enumerate(prescriptions[:6], 1):
         lines.append(f"\n  Prescription #{i}:")
         if doctor := rx.get("doctor"):
             doc_name = doctor.get("name", "Unknown") if isinstance(doctor, dict) else str(doctor)
@@ -158,97 +141,75 @@ def _format_prescriptions(data) -> str:
             lines.append("    Medications:")
             for med in medications:
                 name = med.get("name", "Unknown")
-                dosage = med.get("dosage", "")
-                freq = med.get("frequency", "")
-                duration = med.get("duration", "")
-                instructions = med.get("instructions", "")
-                timing = "Before meal" if med.get("beforeMeal") else ("After meal" if med.get("afterMeal") else "")
-                med_line = f"      - {name}"
-                if dosage:
-                    med_line += f" {dosage}"
-                if freq:
-                    med_line += f", {freq}"
-                if duration:
-                    med_line += f", for {duration}"
-                if timing:
-                    med_line += f" ({timing})"
-                if instructions:
-                    med_line += f". Note: {instructions}"
-                lines.append(med_line)
+                dosage = med.get("dosage", "N/A")
+                freq = med.get("frequency", "N/A")
+                dur = med.get("duration", "N/A")
+                inst = med.get("instructions", "")
+                med_str = f"      - {name} | Dosage: {dosage} | Frequency: {freq} | Duration: {dur}"
+                if inst:
+                    med_str += f" | Notes: {inst}"
+                lines.append(med_str)
     return "\n".join(lines)
 
 
 def _format_medical_records(data) -> str:
     if not data:
-        return "No medical records found."
+        return "No medical history records found."
     if isinstance(data, list):
         records = data
     elif isinstance(data, dict):
         records = data.get("records", [data])
     else:
-        return "No medical records found."
+        return "No medical history records found."
 
     if not records:
-        return "No medical records found."
+        return "No medical history records found."
 
-    lines = [f"Medical Records ({len(records)} record(s)):"]
-    for i, rec in enumerate(records[:5], 1):
+    lines = [f"Medical Records & Clinical Diagnoses ({len(records)} record(s)):"]
+    for i, rec in enumerate(records[:6], 1):
         lines.append(f"\n  Record #{i}:")
-        if date := rec.get("visitDate") or rec.get("createdAt"):
-            lines.append(f"    Visit Date: {str(date)[:10]}")
-        if doc := rec.get("doctor"):
-            doc_name = doc.get("name", "Unknown") if isinstance(doc, dict) else str(doc)
-            lines.append(f"    Doctor: Dr. {doc_name}")
-        diagnosis = rec.get("diagnosis", {})
-        if isinstance(diagnosis, dict):
-            if primary := diagnosis.get("primary"):
-                lines.append(f"    Primary Diagnosis: {primary}")
-            if secondary := diagnosis.get("secondary"):
-                if isinstance(secondary, list):
-                    lines.append(f"    Secondary: {', '.join(secondary)}")
-            if icd := diagnosis.get("icd10Code"):
-                lines.append(f"    ICD-10: {icd}")
-        if chief := rec.get("chiefComplaint"):
-            lines.append(f"    Chief Complaint: {chief}")
-        if treatment := rec.get("treatmentPlan"):
-            lines.append(f"    Treatment Plan: {str(treatment)[:120]}")
-        if follow_up := rec.get("followUp", {}):
-            if isinstance(follow_up, dict):
-                if needed := follow_up.get("required"):
-                    lines.append(f"    Follow-up Required: {needed}")
-                if fdate := follow_up.get("date"):
-                    lines.append(f"    Follow-up Date: {str(fdate)[:10]}")
+        if diagnosis := rec.get("diagnosis"):
+            lines.append(f"    Diagnosis: {diagnosis}")
+        if date := rec.get("date") or rec.get("createdAt"):
+            lines.append(f"    Date: {str(date)[:10]}")
+        if doctor := rec.get("doctor"):
+            doc_name = doctor.get("name", "Unknown") if isinstance(doctor, dict) else str(doctor)
+            lines.append(f"    Physician: Dr. {doc_name}")
+        if symptoms := rec.get("symptoms"):
+            s_str = ", ".join(symptoms) if isinstance(symptoms, list) else str(symptoms)
+            lines.append(f"    Symptoms: {s_str}")
+        if treatment := rec.get("treatment"):
+            lines.append(f"    Treatment/Plan: {treatment}")
+        if notes := rec.get("notes"):
+            lines.append(f"    Clinical Notes: {notes}")
     return "\n".join(lines)
 
 
-def _format_appointments(data, label: str = "Appointments") -> str:
+def _format_appointments(data, label="Appointments") -> str:
     if not data:
         return f"No {label.lower()} found."
     if isinstance(data, list):
-        appointments = data
+        appts = data
     elif isinstance(data, dict):
-        appointments = data.get("appointments", [data])
+        appts = data.get("appointments", [data])
     else:
         return f"No {label.lower()} found."
 
-    if not appointments:
+    if not appts:
         return f"No {label.lower()} found."
 
-    lines = [f"{label} ({len(appointments)} record(s)):"]
-    for i, appt in enumerate(appointments[:5], 1):
-        lines.append(f"\n  Appointment #{i}:")
-        if date := appt.get("appointmentDate") or appt.get("date"):
-            lines.append(f"    Date: {str(date)[:16]}")
-        if doc := appt.get("doctor"):
-            doc_name = doc.get("name", "Unknown") if isinstance(doc, dict) else str(doc)
+    lines = [f"{label} ({len(appts)} record(s)):"]
+    for i, a in enumerate(appts[:6], 1):
+        lines.append(f"\n  Visit #{i}:")
+        if doctor := a.get("doctor"):
+            doc_name = doctor.get("name", "Unknown") if isinstance(doctor, dict) else str(doctor)
             lines.append(f"    Doctor: Dr. {doc_name}")
-        if dept := appt.get("department"):
-            dept_name = dept.get("name", str(dept)) if isinstance(dept, dict) else str(dept)
-            lines.append(f"    Department: {dept_name}")
-        if status := appt.get("status"):
+        if date := a.get("appointmentDate") or a.get("date"):
+            lines.append(f"    Date: {str(date)[:16]}")
+        if reason := a.get("reason"):
+            lines.append(f"    Reason for Visit: {reason}")
+        if status := a.get("status"):
             lines.append(f"    Status: {status}")
-        if reason := appt.get("reason") or appt.get("triage_reason"):
-            lines.append(f"    Reason: {str(reason)[:100]}")
-        if notes := appt.get("nurseNotes"):
-            lines.append(f"    Nurse Notes: {str(notes)[:100]}")
+        if notes := a.get("notes"):
+            lines.append(f"    Consultation Notes: {notes}")
     return "\n".join(lines)

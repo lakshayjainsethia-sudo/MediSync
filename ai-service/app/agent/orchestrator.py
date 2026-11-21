@@ -1,5 +1,5 @@
 """
-Main Orchestrator (Integrated with Patient Document RAG)
+Main Orchestrator (Enhanced with Deep Patient Record Access & General QA)
 
 The unified single-agent pipeline:
   1. Receive patient message + JWT token + conversation_id
@@ -7,7 +7,7 @@ The unified single-agent pipeline:
   3. Execute tool:
      - If query_patient_documents: invoke RAG retrieval engine
      - If structured medical tool: fetch data from Node.js API Gateway using verified JWT
-     - If general health question: evaluate if document context also has relevant references
+     - If general query: check if patient's records or uploaded documents have relevant context
   4. Build LLM prompt with: system prompt + conversation history + retrieved clinical data + patient question
   5. Call Ollama /api/generate
   6. Persist both user message and assistant response to MongoDB
@@ -32,9 +32,9 @@ def _build_history_context(messages: list) -> str:
     if not messages:
         return ""
     lines = ["Recent conversation:"]
-    for msg in messages[-6:]:  # last 3 exchanges (user+assistant pairs)
+    for msg in messages[-6:]:
         role_label = "Patient" if msg["role"] == "user" else "Assistant"
-        content = msg["content"][:200]
+        content = msg["content"][:250]
         lines.append(f"  {role_label}: {content}")
     return "\n".join(lines)
 
@@ -60,14 +60,15 @@ async def process_message(
 
     # 3. Execution routing
     if tool_name == "query_patient_documents":
-        # RAG pipeline
+        # RAG pipeline across uploaded laboratory & diagnostic reports
         rag_context, citations = await retrieve_document_context(patient_id, user_message)
         if rag_context:
             context_data = rag_context
         else:
-            context_data = "NO_RECORDS_FOUND: No relevant documents found matching this query in your uploaded medical files."
+            context_data = "No specific uploaded laboratory documents were found matching this query."
+
     elif tool_name != "general_qa":
-        # Structured Node.js API Tool
+        # Structured Node.js API Tool (prescriptions, records, past visits, or full 360 summary)
         context_data, raw_data = await execute_tool(tool_name, jwt_token)
         if context_data.startswith("ERROR:UNAUTHORIZED"):
             return {
@@ -81,13 +82,14 @@ async def process_message(
             fetch_error = context_data
             context_data = ""
     else:
-        # For general queries, check if the patient has any specific uploaded reports that match
+        # General question or open-ended clinical query:
+        # Check both RAG and core profile to provide relevant background if helpful
         rag_context, citations = await retrieve_document_context(patient_id, user_message, top_k=2)
         if rag_context:
             context_data = rag_context
 
     # 4. Build conversation history context
-    history = await get_recent_messages(convo_id_str, patient_id, limit=10)
+    history = await get_recent_messages(convo_id_str, patient_id, limit=8)
     history_text = _build_history_context(history)
 
     # Combine history + fetched context
