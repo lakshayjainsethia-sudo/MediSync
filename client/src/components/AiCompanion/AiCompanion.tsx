@@ -2,14 +2,7 @@
  * AiCompanion.tsx
  *
  * MediSync AI Care Companion — Patient-facing chat UI.
- *
- * This component:
- *   - Is only rendered inside PatientDashboard (role-gated by PrivateRoute)
- *   - Uses AuthContext to get the patient's _id and JWT token
- *   - Calls aiCompanionApi.ts which routes through the existing api.ts interceptors
- *   - Maintains conversation_id in state for multi-turn context
- *   - Shows typing indicator while waiting for LLM response
- *   - Shows which data tool was used (optional debug badge)
+ * Enhanced with Patient-Centric RAG citations, document source tags, and navigation.
  */
 
 import React, { useState, useRef, useEffect, useCallback } from "react";
@@ -17,20 +10,24 @@ import { useAuth } from "../../context/AuthContext";
 import {
   sendMessage,
   type ChatMessage,
+  type CitationItem,
 } from "../../api/aiCompanionApi";
+import { FileText, Sparkles, AlertCircle } from "lucide-react";
 
 interface Message extends ChatMessage {
   id: string;
   tool_used?: string;
+  citations?: CitationItem[];
   error?: string;
 }
 
 const SUGGESTED_PROMPTS = [
+  "Explain my latest blood test report",
   "Show me my current prescriptions",
   "What is my medical history?",
   "What are my allergies?",
   "Summarize my last consultation",
-  "Give me a summary of my health",
+  "Explain the abnormal values in my report",
 ];
 
 export const AiCompanion: React.FC = () => {
@@ -40,7 +37,7 @@ export const AiCompanion: React.FC = () => {
       id: "welcome",
       role: "assistant",
       content:
-        "Hello! I'm your MediSync AI Care Companion. I can help you understand your medical records, prescriptions, and past consultations. What would you like to know?",
+        "Hello! I'm your MediSync AI Care Companion. I can help you understand your medical records, prescriptions, and your uploaded laboratory & diagnostic reports. What would you like to know?",
       timestamp: new Date().toISOString(),
     },
   ]);
@@ -51,7 +48,6 @@ export const AiCompanion: React.FC = () => {
   const bottomRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  // Auto-scroll to bottom when messages update
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
@@ -68,7 +64,6 @@ export const AiCompanion: React.FC = () => {
     setInput("");
     setLoading(true);
 
-    // Optimistically add user message
     addMessage({ role: "user", content: text, timestamp: new Date().toISOString() });
 
     try {
@@ -79,6 +74,7 @@ export const AiCompanion: React.FC = () => {
         content: result.response,
         timestamp: new Date().toISOString(),
         tool_used: result.tool_used,
+        citations: result.citations,
         error: result.error ?? undefined,
       });
     } catch (err: any) {
@@ -122,29 +118,29 @@ export const AiCompanion: React.FC = () => {
   };
 
   return (
-    <div className="flex flex-col h-full bg-gray-50 rounded-xl overflow-hidden shadow-sm border border-gray-200">
+    <div className="flex flex-col h-full bg-slate-50 rounded-xl overflow-hidden shadow-sm border border-slate-200">
       {/* Header */}
-      <div className="flex items-center justify-between px-5 py-3 bg-white border-b border-gray-200">
+      <div className="flex items-center justify-between px-5 py-3 bg-white border-b border-slate-200">
         <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-full bg-gradient-to-br from-blue-500 to-teal-400 flex items-center justify-center">
-            <span className="text-white text-sm font-bold">AI</span>
+          <div className="w-9 h-9 rounded-full bg-gradient-to-br from-indigo-600 to-teal-500 flex items-center justify-center shadow-sm">
+            <Sparkles className="h-5 w-5 text-white" />
           </div>
           <div>
-            <h2 className="text-sm font-semibold text-gray-800">AI Care Companion</h2>
-            <p className="text-xs text-gray-500">Powered by Qwen2.5 · Local & Private</p>
+            <h2 className="text-sm font-semibold text-slate-800">AI Care Companion</h2>
+            <p className="text-xs text-slate-500">Qwen2.5 + RAG Embeddings · Local & Private</p>
           </div>
         </div>
         <div className="flex items-center gap-2">
           <button
             onClick={() => setShowDebug((v) => !v)}
-            className="text-xs text-gray-400 hover:text-gray-600 px-2 py-1 rounded"
+            className="text-xs text-slate-400 hover:text-slate-600 px-2 py-1 rounded"
             title="Toggle debug info"
           >
             {showDebug ? "Hide debug" : "Debug"}
           </button>
           <button
             onClick={handleNewConversation}
-            className="text-xs bg-gray-100 hover:bg-gray-200 text-gray-600 px-3 py-1.5 rounded-lg transition-colors"
+            className="text-xs bg-slate-100 hover:bg-slate-200 text-slate-600 px-3 py-1.5 rounded-lg transition-colors font-medium"
           >
             New Chat
           </button>
@@ -159,16 +155,37 @@ export const AiCompanion: React.FC = () => {
             className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}
           >
             <div
-              className={`max-w-[80%] rounded-2xl px-4 py-3 text-sm shadow-sm ${
+              className={`max-w-[85%] rounded-2xl px-4 py-3 text-sm shadow-sm ${
                 msg.role === "user"
-                  ? "bg-blue-600 text-white rounded-br-sm"
-                  : "bg-white text-gray-800 rounded-bl-sm border border-gray-100"
+                  ? "bg-indigo-600 text-white rounded-br-sm"
+                  : "bg-white text-slate-800 rounded-bl-sm border border-slate-100"
               }`}
             >
               <p className="whitespace-pre-wrap leading-relaxed">{msg.content}</p>
+
+              {/* RAG Citations */}
+              {msg.role === "assistant" && msg.citations && msg.citations.length > 0 && (
+                <div className="mt-3 pt-2.5 border-t border-slate-100 text-xs">
+                  <p className="font-semibold text-indigo-700 flex items-center gap-1 mb-1.5">
+                    <FileText className="h-3.5 w-3.5" /> Verified Sources Cited:
+                  </p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {msg.citations.map((c, i) => (
+                      <span
+                        key={i}
+                        className="inline-flex items-center gap-1 bg-indigo-50 border border-indigo-200/80 text-indigo-900 px-2 py-0.5 rounded text-[11px]"
+                      >
+                        <span className="font-medium truncate max-w-[140px]">{c.document_name}</span>
+                        <span className="text-indigo-500 font-semibold">(Pg. {c.page_number})</span>
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               {showDebug && msg.tool_used && msg.role === "assistant" && (
-                <div className="mt-2 pt-2 border-t border-gray-100">
-                  <span className="text-xs text-gray-400 font-mono">
+                <div className="mt-2 pt-2 border-t border-slate-100">
+                  <span className="text-xs text-slate-400 font-mono">
                     tool: {msg.tool_used}
                     {msg.error && ` | warn: ${msg.error.slice(0, 40)}`}
                   </span>
@@ -176,8 +193,8 @@ export const AiCompanion: React.FC = () => {
               )}
               {msg.timestamp && (
                 <p
-                  className={`text-xs mt-1.5 ${
-                    msg.role === "user" ? "text-blue-200" : "text-gray-400"
+                  className={`text-[10px] mt-1.5 ${
+                    msg.role === "user" ? "text-indigo-200" : "text-slate-400"
                   }`}
                 >
                   {new Date(msg.timestamp).toLocaleTimeString([], {
@@ -193,11 +210,11 @@ export const AiCompanion: React.FC = () => {
         {/* Typing indicator */}
         {loading && (
           <div className="flex justify-start">
-            <div className="bg-white border border-gray-100 rounded-2xl rounded-bl-sm px-4 py-3 shadow-sm">
+            <div className="bg-white border border-slate-100 rounded-2xl rounded-bl-sm px-4 py-3 shadow-sm">
               <div className="flex gap-1 items-center h-4">
-                <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce [animation-delay:0ms]" />
-                <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce [animation-delay:150ms]" />
-                <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce [animation-delay:300ms]" />
+                <span className="w-2 h-2 bg-indigo-400 rounded-full animate-bounce [animation-delay:0ms]" />
+                <span className="w-2 h-2 bg-indigo-400 rounded-full animate-bounce [animation-delay:150ms]" />
+                <span className="w-2 h-2 bg-indigo-400 rounded-full animate-bounce [animation-delay:300ms]" />
               </div>
             </div>
           </div>
@@ -213,7 +230,7 @@ export const AiCompanion: React.FC = () => {
             <button
               key={prompt}
               onClick={() => handleSuggestedPrompt(prompt)}
-              className="text-xs bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 rounded-full px-3 py-1.5 transition-colors"
+              className="text-xs bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 rounded-full px-3 py-1.5 transition-colors font-medium"
             >
               {prompt}
             </button>
@@ -223,29 +240,30 @@ export const AiCompanion: React.FC = () => {
 
       {/* Disclaimer */}
       <div className="px-4 pb-1 text-center">
-        <p className="text-xs text-gray-400">
-          AI responses are for informational purposes only. Not a substitute for professional medical advice.
+        <p className="text-[11px] text-slate-400 flex items-center justify-center gap-1">
+          <AlertCircle className="h-3 w-3" />
+          AI responses are for clinical informational guidance only and do not replace doctor evaluations.
         </p>
       </div>
 
       {/* Input area */}
       <div className="px-4 pb-4 pt-2">
-        <div className="flex gap-2 items-center bg-white border border-gray-200 rounded-xl px-4 py-2 shadow-sm focus-within:border-blue-400 focus-within:ring-1 focus-within:ring-blue-100 transition-all">
+        <div className="flex gap-2 items-center bg-white border border-slate-200 rounded-xl px-4 py-2 shadow-sm focus-within:border-indigo-500 focus-within:ring-1 focus-within:ring-indigo-200 transition-all">
           <input
             ref={inputRef}
             type="text"
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder="Ask about your prescriptions, records, or past consultations..."
+            placeholder="Ask about your test reports, blood counts, prescriptions, or past visits..."
             disabled={loading}
-            className="flex-1 text-sm outline-none bg-transparent text-gray-700 placeholder-gray-400 disabled:opacity-50"
+            className="flex-1 text-sm outline-none bg-transparent text-slate-700 placeholder-slate-400 disabled:opacity-50"
             maxLength={1000}
           />
           <button
             onClick={handleSend}
             disabled={loading || !input.trim()}
-            className="w-8 h-8 flex items-center justify-center bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 text-white rounded-lg transition-colors flex-shrink-0"
+            className="w-8 h-8 flex items-center justify-center bg-indigo-600 hover:bg-indigo-700 disabled:bg-slate-300 text-white rounded-lg transition-colors flex-shrink-0"
             aria-label="Send message"
           >
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">

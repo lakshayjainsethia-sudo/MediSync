@@ -1,32 +1,32 @@
 """
-Deterministic Intent Router
+Deterministic Intent Router (Enhanced with Patient Document RAG)
 
-Maps patient questions to tool names using keyword pattern matching.
+Maps patient questions to structured tool names or patient document RAG retrieval.
 This is the PRIMARY dispatch mechanism — it does NOT rely on the LLM
 for routing decisions, which makes it 100% reliable regardless of
 model quality or context window constraints.
-
-Architecture rationale:
-  qwen2.5:1.5b cannot use /api/chat (OOM on this machine's RAM config),
-  so native LLM tool calling is not available. The deterministic router
-  provides the same routing behavior with zero latency and zero LLM errors.
-
-Scope:
-  Appointment management (upcoming/scheduling) is explicitly OUT OF SCOPE
-  for the AI Care Companion. Only past consultation history is supported
-  because it is part of the medical record context.
 """
 
 from typing import Optional
 
 # Each entry: (tool_name, [keyword_patterns])
-# Patterns are matched case-insensitively as substrings of the user query.
-# Order matters — more specific patterns should come first.
 ROUTING_TABLE = [
+    (
+        "query_patient_documents",
+        [
+            "my report", "my lab", "blood report", "test report", "blood test",
+            "laboratory report", "radiology", "scan report", "mri", "x-ray", "ct scan",
+            "ultrasound", "biopsy", "pathology", "hemoglobin", "wbc", "rbc",
+            "platelet", "cholesterol", "lipid", "creatinine", "glucose",
+            "hba1c", "thyroid", "tsh", "abnormal value", "uploaded document",
+            "uploaded file", "my document", "my pdf", "discharge summary",
+            "what does my report say", "explain my report", "explain my test",
+            "in my report", "in my test", "latest report", "previous report"
+        ],
+    ),
     (
         "get_patient_summary",
         [
-            # Require "my" or "health" to avoid matching generic uses of "summary"
             "health summary", "medical summary", "my summary", "summary of my health", "summary of health",
             "overview of my health", "everything about me",
             "full report", "all my info", "complete health",
@@ -47,8 +47,6 @@ ROUTING_TABLE = [
             "medical history", "health history", "past diagnosis",
             "diagnosed with", "medical condition", "medical record",
             "health record", "past record",
-            # First-person condition-inquiry patterns only
-            # (avoid bare disease names to prevent false positives on third-party queries)
             "do i have", "am i diagnosed", "have i been diagnosed",
             "what condition", "my condition", "my disease", "my illness",
             "my chronic", "my diagnosis",
@@ -62,8 +60,6 @@ ROUTING_TABLE = [
             "met doctor", "last appointment",
         ],
     ),
-    # NOTE: get_upcoming_appointments intentionally omitted.
-    # Appointment management is outside the AI Care Companion scope.
     (
         "get_patient_profile",
         [
@@ -76,7 +72,6 @@ ROUTING_TABLE = [
 
 GENERAL_QA_TOOL = "general_qa"
 
-
 def route_intent(query: str) -> str:
     """
     Returns the tool name that best matches the query.
@@ -88,7 +83,6 @@ def route_intent(query: str) -> str:
             return tool_name
     return GENERAL_QA_TOOL
 
-
 def explain_route(query: str) -> dict:
     """Debug helper — returns tool name and which pattern matched."""
     q = query.lower()
@@ -97,4 +91,3 @@ def explain_route(query: str) -> dict:
             if pattern in q:
                 return {"tool": tool_name, "matched_pattern": pattern}
     return {"tool": GENERAL_QA_TOOL, "matched_pattern": None}
-

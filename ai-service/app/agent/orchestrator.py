@@ -1,33 +1,31 @@
 """
-Main Orchestrator
+Main Orchestrator (Integrated with Patient Document RAG)
 
-The single-agent pipeline:
-
+The unified single-agent pipeline:
   1. Receive patient message + JWT token + conversation_id
   2. Determine intent via deterministic intent_router
-  3. Execute tool (fetch real patient data from Node.js API using JWT)
-  4. Build LLM prompt with: system prompt + conversation history + fetched data + question
+  3. Execute tool:
+     - If query_patient_documents: invoke RAG retrieval engine
+     - If structured medical tool: fetch data from Node.js API Gateway using verified JWT
+     - If general health question: evaluate if document context also has relevant references
+  4. Build LLM prompt with: system prompt + conversation history + retrieved clinical data + patient question
   5. Call Ollama /api/generate
   6. Persist both user message and assistant response to MongoDB
-  7. Return response to frontend
-
-Error handling:
-  - If JWT is rejected by Node.js (401): return auth error to frontend
-  - If Ollama is down: return fallback message
-  - If data fetch fails: LLM answers without data context
+  7. Return grounded response along with document citations
 """
+
+from typing import List, Dict, Any, Optional
 
 from app.agent.intent_router import route_intent
 from app.agent.tool_executor import execute_tool
+from app.rag.pipeline import retrieve_document_context
 from app.conversation.manager import (
     get_or_create_conversation,
     append_message,
     get_recent_messages,
-    _serialize,
 )
 from app.llm.ollama_provider import generate_response
 from app.config import settings
-
 
 def _build_history_context(messages: list) -> str:
     """Convert recent message history to a readable format for the LLM."""
@@ -36,10 +34,9 @@ def _build_history_context(messages: list) -> str:
     lines = ["Recent conversation:"]
     for msg in messages[-6:]:  # last 3 exchanges (user+assistant pairs)
         role_label = "Patient" if msg["role"] == "user" else "Assistant"
-        content = msg["content"][:200]  # truncate long messages
+        content = msg["content"][:200]
         lines.append(f"  {role_label}: {content}")
     return "\n".join(lines)
-
 
 async def process_message(
     patient_id: str,
@@ -48,17 +45,8 @@ async def process_message(
     conversation_id: str = None,
 ) -> dict:
     """
-    Full pipeline: intent → tool → LLM → persist → respond.
-
-    Returns:
-      {
-        conversation_id: str,
-        response: str,
-        tool_used: str,
-        error: str | None
-      }
+    Unified pipeline: Intent -> Tool/RAG -> LLM -> Persist -> Respond.
     """
-
     # 1. Load or create conversation
     convo = await get_or_create_conversation(patient_id, conversation_id)
     convo_id_str = str(convo["_id"])
@@ -66,30 +54,46 @@ async def process_message(
     # 2. Route intent
     tool_name = route_intent(user_message)
 
-    # 3. Execute tool — fetch patient data
     context_data = ""
     fetch_error = None
-    if tool_name != "general_qa":
+    citations = []
+
+    # 3. Execution routing
+    if tool_name == "query_patient_documents":
+        # RAG pipeline
+        rag_context, citations = await retrieve_document_context(patient_id, user_message)
+        if rag_context:
+            context_data = rag_context
+        else:
+            context_data = "NO_RECORDS_FOUND: No relevant documents found matching this query in your uploaded medical files."
+    elif tool_name != "general_qa":
+        # Structured Node.js API Tool
         context_data, raw_data = await execute_tool(tool_name, jwt_token)
         if context_data.startswith("ERROR:UNAUTHORIZED"):
             return {
                 "conversation_id": convo_id_str,
                 "response": "Your session has expired. Please log in again.",
                 "tool_used": tool_name,
+                "citations": [],
                 "error": "unauthorized",
             }
         if context_data.startswith("ERROR:"):
             fetch_error = context_data
-            context_data = ""  # Let LLM answer generically
+            context_data = ""
+    else:
+        # For general queries, check if the patient has any specific uploaded reports that match
+        rag_context, citations = await retrieve_document_context(patient_id, user_message, top_k=2)
+        if rag_context:
+            context_data = rag_context
 
     # 4. Build conversation history context
     history = await get_recent_messages(convo_id_str, patient_id, limit=10)
     history_text = _build_history_context(history)
 
-    # Combine history + fetched data into one context block
+    # Combine history + fetched context
     combined_context = "\n\n".join(filter(None, [history_text, context_data]))
 
-    # Trim context to stay within num_ctx budget
+    # Trim context to stay safely within num_ctx budget
     if len(combined_context) > settings.max_context_chars:
         combined_context = combined_context[-settings.max_context_chars:]
 
@@ -112,5 +116,6 @@ async def process_message(
         "conversation_id": convo_id_str,
         "response": response_text,
         "tool_used": tool_name,
+        "citations": citations,
         "error": fetch_error or llm_error,
     }

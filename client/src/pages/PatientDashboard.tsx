@@ -9,6 +9,7 @@ import Button from '../components/ui/Button'
 import { format } from 'date-fns'
 import AppointmentForm from '../components/appointments/AppointmentForm'
 import AiCompanion from '../components/AiCompanion/AiCompanion'
+import { PatientDocumentManager } from '../components/medical/PatientDocumentManager'
 
 export default function PatientDashboard() {
   const { user } = useAuth()
@@ -333,6 +334,9 @@ export default function PatientDashboard() {
             </Button>
           </div>
         </div>
+
+        {/* Patient Document RAG Management Section */}
+        <PatientDocumentManager />
       </div>
 
       {/* Floating Chat Button (Bottom Right) */}
